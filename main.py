@@ -24,6 +24,8 @@ data=remove_outliers(data,'Price_BE')
 
 predictions=forecasting_model(data)
 
+plot_lists(predictions.index,predictions, legend=['Price_BE'], xlabel='Date', ylabel='Price', title='Price_BE')
+
 
 
 
