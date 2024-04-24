@@ -1,4 +1,5 @@
 
+from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
@@ -12,12 +13,18 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 from sklearn.model_selection import GridSearchCV
-#from keras.wrappers.scikit_learn import KerasClassifier # type: ignore
-from scikeras.wrappers import KerasRegressor
+from scikeras.wrappers import KerasRegressor 
 
 from datagathering import split_train_val_test
 
-def build_model(input_shape:tuple()=(6,),hidden_layers: int=1, hidden_neurons: int=6, activation: str='relu', learning_rate: float=0.001, rho: int=0.9, epsilon: float=1e-6) -> Sequential: # type: ignore
+class CustomKerasRegressor(BaseEstimator, RegressorMixin):
+    def __init__(self, epsilon=1e-6, batch_size=32, epochs=24):
+        self.epsilon = epsilon
+        self.batch_size = batch_size
+        self.epochs= epochs
+        self.model = KerasRegressor(model=self.create_model)
+
+    def create_model(self, hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001, rho=0.9):
         """
         Build a sequential model with the specified architecture and parameters.
         :param input_shape: The shape of the input data features.
@@ -29,6 +36,38 @@ def build_model(input_shape:tuple()=(6,),hidden_layers: int=1, hidden_neurons: i
         :param epsilon: The epsilon value for the optimizer.
         :return: The built model.
         """
+        input_shape=(6,)
+        model = Sequential() # build a sequential model
+        model.add(Input(shape=input_shape)) # add an input layer with the shape of the input data features
+        for i in range(hidden_layers):
+                model.add(Dense(units=hidden_neurons, activation=activation)) # add a hidden layer for each hidden layer specified
+
+        model.add(Dense(units=1, activation='linear')) # add an output layer (1 neuron since we are predicting a single value each time)
+
+        rprop = RMSprop(learning_rate=learning_rate, rho=rho, epsilon=self.epsilon) # type: ignore
+        model.compile(loss='mean_squared_error', optimizer=rprop) # compile the model
+
+        return model
+
+    def fit(self, X, y, **kwargs):
+        return self.model.fit(X, y, batch_size=self.batch_size, epochs=self.epochs, **kwargs)
+
+    def predict(self, X, **kwargs):
+        return self.model.predict(X, **kwargs)
+
+def create_model(hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001,rho=0.9, epsilon=1e-6):
+        """
+        Build a sequential model with the specified architecture and parameters.
+        :param input_shape: The shape of the input data features.
+        :param hidden_layers: The number of hidden layers in the model.
+        :param hidden_neurons: The number of neurons in each hidden layer.
+        :param activation_function: The activation function for the hidden layers.
+        :param learning_rate: The learning rate for the optimizer.
+        :param rho: The rho value for the optimizer.
+        :param epsilon: The epsilon value for the optimizer.
+        :return: The built model.
+        """
+        input_shape=(6,)
         model = Sequential() # build a sequential model
         model.add(Input(shape=input_shape)) # add an input layer with the shape of the input data features
         for i in range(hidden_layers):
@@ -68,29 +107,34 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         
         # Define the hyperparameters to search
         param_grid = {
-            'model__hidden_layers': [1, 2, 3],
+            #'model__hidden_layers': [1, 2, 3],
             #'model__hidden_neurons': [3, 6, 12, 24],
             #'model__activation': ['relu', 'tanh', 'sigmoid'],
             #'model__learning_rate': [0.001, 0.01, 0.1],
             #'model__rho': [0.9, 0.99, 0.999],
-            'model__epsilon': [1e-6, 1e-7, 1e-8],
+            'epsilon': [1e-6, 1e-7, 1e-8],
             'batch_size': [24, 32, 64],
             'epochs': [24, 48, 72]
         }
-
+        epsilons=[1e-6, 1e-7, 1e-8]
+        batch_sizes=[24, 32, 64]
+        epochs=[24, 48, 72]
+        param_grid=dict(epsilon=epsilons, batch_size=batch_sizes, epochs=epochs)
         # Optimize hyperparameters
-        model = KerasRegressor(model=build_model(input_shape=(x_train.shape[1],)), epochs=24, batch_size=24)
-        grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=5, scoring='accuracy',verbose=1)
+        #model = CustomKerasRegressor()
+        model=KerasRegressor(model=create_model,epsilon= [1e-6, 1e-7, 1e-8])
+        print(model.get_params().keys())
 
+        grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=5, scoring='neg_mean_squared_error',verbose=1)
         # Fit the model and get the best parameters
-        grid_search.fit(x_train, y_train,verbose=1)
+        grid_search.fit(x_train, y_train,verbose=0)
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
         print("Best: %f using %s" % (best_params, best_score))
 
         # Train the final model
-        final_model = build_model(input_shape=(x_train.shape[1],), **best_params)
-        output_training=final_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_data=(x_val, y_val))
+        final_model = create_model(best_params)
+        output_training=final_model.fit(x_train, y_train, epochs=24, batch_size=24, verbose=1, validation_data=(x_val, y_val))
 
         # Print the training and validation loss
         mse_train=output_training.history['loss']
@@ -143,7 +187,7 @@ def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, a
         x_forecast=split_train_val_test(data)[3]
 
         # Build the model
-        model = build_model(input_shape=(x_train.shape[1],), hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
+        model = create_model(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
 
         # Train the model
         output_training=model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_data=(x_val, y_val))
