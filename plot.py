@@ -1,7 +1,7 @@
 import datetime
 import matplotlib.pyplot as plt
 import pandas as pd
-from forecasting import forecasting_model
+from forecasting import play_model, optimized_model
 import seaborn as sns # type: ignore
 
 def plot_lists(x_values, y_values, legend=None, xlabel=None, ylabel=None, title=None):
@@ -48,11 +48,20 @@ def boxplot(data):
     data.boxplot(column='belpex', by='months')
 
 def plot_training_validation_loss_lr(data, learning_rates):
+    """
+    This function plots the training and validation loss for different learning rates.
+    :param data: The data to train the model on.
+    :param learning_rates: The learning rates to test.
+
+    :example:
+    plot_training_validation_loss_lr(data, [0.001, 0.01, 0.1])
+    """
+
     # Create a new figure
     plt.figure()
 
     for lr in learning_rates:
-        predictions, mse_train, mse_val, mse_test = forecasting_model(data, time_steps=24, neurons=[24,1], activation_functions=['relu', 'linear'], learning_rate=lr, rho=0.9, epochs=48, batch_size=24,epsilon=1e-6)
+        predictions, mse_train, mse_val, mse_test = play_model(data, time_steps=24, neurons=[24,1], activation_functions=['relu', 'linear'], learning_rate=lr, rho=0.9, epochs=48, batch_size=24,epsilon=1e-6)
 
         # Plot mse_train
         plt.plot(mse_train[1:], label=f'Training loss (lr={lr})')
@@ -95,8 +104,6 @@ def plot_training_validation_loss(mse_train, mse_val):
 
     # Show the plot
     plt.show()
-
-
 
 def plot_training_validation_loss_rho(data, rhos):
     # Create a new figure
