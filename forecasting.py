@@ -106,34 +106,30 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         x_forecast=split_train_val_test(data)[3]
         
         # Define the hyperparameters to search
-        param_grid = {
-            #'model__hidden_layers': [1, 2, 3],
-            #'model__hidden_neurons': [3, 6, 12, 24],
-            #'model__activation': ['relu', 'tanh', 'sigmoid'],
-            #'model__learning_rate': [0.001, 0.01, 0.1],
-            #'model__rho': [0.9, 0.99, 0.999],
-            'epsilon': [1e-6, 1e-7, 1e-8],
-            'batch_size': [24, 32, 64],
-            'epochs': [24, 48, 72]
-        }
-        epsilons=[1e-6, 1e-7, 1e-8]
-        batch_sizes=[24, 32, 64]
-        epochs=[24, 48, 72]
-        param_grid=dict(epsilon=epsilons, batch_size=batch_sizes, epochs=epochs)
+        epsilons=[1e-6] #, 1e-7, 1e-8
+        batch_sizes=[24] #, 32, 64
+        epochs=[24] #, 48, 72
+        hidden_layers=[1] # , 2, 3
+        hidden_neurons=[3] #, 6, 12, 24
+        activation=['relu'] #, 'tanh', 'sigmoid'
+        learning_rate=[0.001, 0.01, 0.1]
+        rho=[0.9, 0.99, 0.999]
+        param_grid=dict(epsilon=epsilons, batch_size=batch_sizes, epochs=epochs, hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho)
+        
         # Optimize hyperparameters
-        #model = CustomKerasRegressor()
-        model=KerasRegressor(model=create_model,epsilon= [1e-6, 1e-7, 1e-8])
+        model=KerasRegressor(model=create_model,epsilon= epsilons, batch_size=batch_sizes, epochs=epochs, hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho,verbose=2) #Wrap the model in a KerasRegressor 
+
         print(model.get_params().keys())
 
-        grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=5, scoring='neg_mean_squared_error',verbose=1)
+        grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=2, scoring='neg_mean_squared_error',verbose=2) #TODO: check random search, cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
         # Fit the model and get the best parameters
         grid_search.fit(x_train, y_train,verbose=0)
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
-        print("Best: %f using %s" % (best_params, best_score))
-
+        print("Best: %s using %f" % (best_params, best_score))
+        
         # Train the final model
-        final_model = create_model(best_params)
+        final_model = create_model(hidden_layers=best_params['hidden_layers'], hidden_neurons=best_params['hidden_neurons'], activation=best_params['activation'], learning_rate=best_params['learning_rate'], rho=best_params['rho'], epsilon=best_params['epsilon'])
         output_training=final_model.fit(x_train, y_train, epochs=24, batch_size=24, verbose=1, validation_data=(x_val, y_val))
 
         # Print the training and validation loss
