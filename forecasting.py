@@ -13,31 +13,34 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 from sklearn.model_selection import GridSearchCV
+#from keras.wrappers.scikit_learn import KerasClassifier # type: ignore
+from scikeras.wrappers import KerasRegressor
+
 from datagathering import split_train_val_test
 
-def build_model(input_shape:Tuple(),hidden_layers: int, hidden_neurons: int, activation_function: str, learning_rate: float, rho: int, epsilon: float) -> Sequential: # type: ignore
-                """
-                Build a sequential model with the specified architecture and parameters.
-                :param input_shape: The shape of the input data features.
-                :param hidden_layers: The number of hidden layers in the model.
-                :param hidden_neurons: The number of neurons in each hidden layer.
-                :param activation_function: The activation function for the hidden layers.
-                :param learning_rate: The learning rate for the optimizer.
-                :param rho: The rho value for the optimizer.
-                :param epsilon: The epsilon value for the optimizer.
-                :return: The built model.
-                """
-                model = Sequential() # build a sequential model
-                model.add(Input(shape=input_shape)) # add an input layer with the shape of the input data features
-                for i in range(hidden_layers):
-                        model.add(Dense(units=hidden_neurons, activation=activation_function)) # add a hidden layer
+def build_model(input_shape:tuple()=(6,),hidden_layers: int=1, hidden_neurons: int=6, activation: str='relu', learning_rate: float=0.001, rho: int=0.9, epsilon: float=1e-6) -> Sequential: # type: ignore
+        """
+        Build a sequential model with the specified architecture and parameters.
+        :param input_shape: The shape of the input data features.
+        :param hidden_layers: The number of hidden layers in the model.
+        :param hidden_neurons: The number of neurons in each hidden layer.
+        :param activation_function: The activation function for the hidden layers.
+        :param learning_rate: The learning rate for the optimizer.
+        :param rho: The rho value for the optimizer.
+        :param epsilon: The epsilon value for the optimizer.
+        :return: The built model.
+        """
+        model = Sequential() # build a sequential model
+        model.add(Input(shape=input_shape)) # add an input layer with the shape of the input data features
+        for i in range(hidden_layers):
+                model.add(Dense(units=hidden_neurons, activation=activation)) # add a hidden layer
 
-                model.add(Dense(units=1, activation='linear')) # add an output layer
+        model.add(Dense(units=1, activation='linear')) # add an output layer
 
-                rprop = RMSprop(learning_rate=learning_rate, rho=rho, epsilon=epsilon) # type: ignore
-                model.compile(loss='mean_squared_error', optimizer=rprop) # compile the model
+        rprop = RMSprop(learning_rate=learning_rate, rho=rho, epsilon=epsilon) # type: ignore
+        model.compile(loss='mean_squared_error', optimizer=rprop) # compile the model
 
-                return model
+        return model
 
 def forecasting_model(data: pd.DataFrame, time_steps: int=24, hidden_layers: int=1, hidden_neurons:int=6, activation_function: str='relu', learning_rate: float=0.001, rho:int=0.9, epochs: int=24, batch_size: int=24,epsilon: int=1e-6) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -77,20 +80,25 @@ def forecasting_model(data: pd.DataFrame, time_steps: int=24, hidden_layers: int
         
         # Define the hyperparameters to search
         param_grid = {
-            'hidden_layers': [1, 2, 3],
-            'hidden_neurons': [3, 6, 12, 24],
-            'activation_function': ['relu', 'tanh', 'sigmoid'],
-            'learning_rate': [0.001, 0.01, 0.1],
-            'rho': [0.9, 0.99, 0.999],
-            'epsilon': [1e-6, 1e-7, 1e-8]
+            'model__hidden_layers': [1, 2, 3],
+            'model__hidden_neurons': [3, 6, 12, 24],
+            'model__activation': ['relu', 'tanh', 'sigmoid'],
+            'model__learning_rate': [0.001, 0.01, 0.1],
+            'model__rho': [0.9, 0.99, 0.999],
+            'model__epsilon': [1e-6, 1e-7, 1e-8],
+            'batch_size': [24, 32, 64],
+            'epochs': [24, 48, 72]
         }
 
         # Optimize hyperparameters
-        grid_search = GridSearchCV(build_model(input_shape=(x_train.shape[1],)), param_grid, cv=5, scoring='accuracy')
-        grid_search.fit(x_train, y_train)
+        model = KerasRegressor(model=build_model(input_shape=(x_train.shape[1],)), epochs=10, batch_size=32)
+        grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=5, scoring='accuracy',verbose=2)
+
+        # Fit the model and get the best parameters
+        grid_search.fit(x_train, y_train,verbose=1)
         best_params = grid_search.best_params_
-        print(best_params)
         best_score = grid_search.best_score_
+        print("Best: %f using %s" % (best_params, best_score))
 
         # Train the final model
         final_model = build_model(input_shape=(x_train.shape[1],), **best_params)

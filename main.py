@@ -23,7 +23,7 @@ print(data.head(10))
 #plot_lists(data.index, data['Price_BE'], legend=['Price_BE'], xlabel='Date', ylabel='Price', title='Price_BE')
 #data=remove_outliers(data,'Price_BE')
 
-predictions,mse_train,mse_val,mse_test=forecasting_model(data, time_steps=24, neurons=[24,1], activation_functions=['relu', 'linear'], learning_rate=0.001, rho=0.9, epochs=72, batch_size=24,epsilon=1e-6)
+predictions,mse_train,mse_val,mse_test=forecasting_model(data, time_steps=24, hidden_layers=1,hidden_neurons=6, activation_function='relu', learning_rate=0.001, rho=0.9, epochs=72, batch_size=24,epsilon=1e-6)
 
 
 #plot_training_validation_loss(mse_train, mse_val)
