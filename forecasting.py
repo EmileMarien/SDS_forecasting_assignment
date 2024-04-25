@@ -88,7 +88,7 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         ## Prepare the data
         x_train, y_train, x_test, y_test, x_forecast = prepare_train_test_forecast(data)
         print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape)
-        print(x_train, y_train, x_test, y_test, x_forecast)
+        #print(x_train, y_train, x_test, y_test, x_forecast)
         
         # Define the model
         selected_model=create_model
@@ -100,13 +100,12 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         hyperparameters = {
         'epsilon': [1e-6],  #, 1e-7, 1e-8
         'batch_size': [24],  #, 32, 64
-        'epochs': [24], #, 48, 72
-        'hidden_layers': [1],  # , 2, 3
-        'hidden_neurons': [3, 6, 12],  #sp_randint(3, 12) 6, 12, 24
-        'activation': ['relu'],   #, 'tanh', 'sigmoid'
-        'learning_rate': [0.001, 0.01, 0.1],  
-        'rho': [0.9, 0.99, 0.999],  
-        'beta': [0.9, 0.99, 0.999]
+        'epochs': [24,48,72], #, 48, 72
+        'hidden_layers': [1,2,3],  # , 2, 3
+        'hidden_neurons': [6],  #sp_randint(3, 12) 6, 12, 24
+        'activation': ['relu','tanh'],   #, 'tanh', 'sigmoid'
+        'learning_rate': [0.01,0.001],  
+        'rho': [0.99],  
         }
 
         # Iterate over hyperparameters and add them to param_grid only if they are present in model_params
@@ -123,7 +122,7 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         # Optimize hyperparameters
         model=KerasRegressor(model=create_model,**param_grid,verbose=2) #Wrap the model in a KerasRegressor 
 
-        grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=2, scoring='neg_mean_squared_error',verbose=2) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
+        grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
 
         #grid_search= RandomizedSearchCV(estimator=model, param_distributions=param_grid, n_iter=10, cv=2, scoring='neg_mean_squared_error',verbose=2) 
         
@@ -134,7 +133,8 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         
         # Train the final model
         final_model = create_model(hidden_layers=best_params['hidden_layers'], hidden_neurons=best_params['hidden_neurons'], activation=best_params['activation'], learning_rate=best_params['learning_rate'], rho=best_params['rho'], epsilon=best_params['epsilon'])
-        output_training=final_model.fit(x_train, y_train, epochs=24, batch_size=24, verbose=1)
+
+        output_training=final_model.fit(x_train, y_train, epochs=best_params['epochs'], batch_size=best_params['batch_size'], verbose=1)
                                         #,validation_data=(x_val, y_val)) not needed anymore since hyperparameters are already optimized
 
         # Print the training loss
@@ -152,12 +152,12 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         x_test = x_test.sort_index()
         y_train = y_train.sort_index()
         y_test = y_test.sort_index()
-        print(x_train, y_train, x_test, y_test)
+        #print(x_train, y_train, x_test, y_test)
 
         # Plot the test results
         plt.plot(x_train.index, y_train, label='Train')
         plt.plot(x_test.index, y_test, label='Actual')
-        plt.plot(x_test.index, test_pred.flatten(), label='Predicted')
+        plt.plot(x_test.index, test_pred, label='Predicted')
         plt.xlabel('Time')
         plt.ylabel('Price_BE')
         plt.legend()
