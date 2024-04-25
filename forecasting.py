@@ -1,7 +1,8 @@
 
+import inspect
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential # type: ignore
 from tensorflow.keras.layers import Dense, Input, LSTM # type: ignore
@@ -14,8 +15,10 @@ from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 from sklearn.model_selection import GridSearchCV
 from scikeras.wrappers import KerasRegressor 
+from scipy.stats import randint as sp_randint
 
-from datagathering import split_train_val_test
+
+from datagathering import split_train_val_test, prepare_train_test_forecast
 
 class CustomKerasRegressor(BaseEstimator, RegressorMixin):
     def __init__(self, epsilon=1e-6, batch_size=32, epochs=24):
@@ -94,49 +97,60 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         :return: The test loss.
         """
         ## Prepare the data
-        x_train=split_train_val_test(data)[0][0]
-        y_train=split_train_val_test(data)[0][1]
-
-        x_val=split_train_val_test(data)[1][0]
-        y_val=split_train_val_test(data)[1][1]
-
-        x_test=split_train_val_test(data)[2][0]
-        y_test=split_train_val_test(data)[2][1]
-
-        x_forecast=split_train_val_test(data)[3]
+        x_train, y_train, x_test, y_test, x_forecast = prepare_train_test_forecast(data)
+        print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape)
+        print(x_train, y_train, x_test, y_test, x_forecast)
         
-        # Define the hyperparameters to search
-        epsilons=[1e-6] #, 1e-7, 1e-8
-        batch_sizes=[24] #, 32, 64
-        epochs=[24] #, 48, 72
-        hidden_layers=[1] # , 2, 3
-        hidden_neurons=[3] #, 6, 12, 24
-        activation=['relu'] #, 'tanh', 'sigmoid'
-        learning_rate=[0.001, 0.01, 0.1]
-        rho=[0.9, 0.99, 0.999]
-        param_grid=dict(epsilon=epsilons, batch_size=batch_sizes, epochs=epochs, hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho)
-        
+        # Define the model
+        selected_model=create_model
+
+        # Get the hyperparameters for the selected model
+        model_params = inspect.signature(selected_model).parameters
+        print(model_params)
+        # Define the hyperparameters and their values
+        hyperparameters = {
+        'epsilon': [1e-6],  #, 1e-7, 1e-8
+        'batch_size': [24],  #, 32, 64
+        'epochs': [24], #, 48, 72
+        'hidden_layers': [1],  # , 2, 3
+        'hidden_neurons': [3, 6, 12],  #sp_randint(3, 12) 6, 12, 24
+        'activation': ['relu'],   #, 'tanh', 'sigmoid'
+        'learning_rate': [0.001, 0.01, 0.1],  
+        'rho': [0.9, 0.99, 0.999]  
+        }
+
+        # Iterate over hyperparameters and add them to param_grid only if they are present in model_params
+        param_grid = {}
+        for param, values in hyperparameters.items():
+                if param in model_params:
+                        param_grid[param] = values
+                if param =='batch_size':
+                      param_grid[param] = values
+                if param =='epochs':
+                        param_grid[param] = values
+        print(param_grid)
+
         # Optimize hyperparameters
-        model=KerasRegressor(model=create_model,epsilon= epsilons, batch_size=batch_sizes, epochs=epochs, hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho,verbose=2) #Wrap the model in a KerasRegressor 
+        model=KerasRegressor(model=create_model,**param_grid,verbose=2) #Wrap the model in a KerasRegressor 
 
-        print(model.get_params().keys())
+        grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=2, scoring='neg_mean_squared_error',verbose=2) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
 
-        grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=2, scoring='neg_mean_squared_error',verbose=2) #TODO: check random search, cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
-        # Fit the model and get the best parameters
+        #grid_search= RandomizedSearchCV(estimator=model, param_distributions=param_grid, n_iter=10, cv=2, scoring='neg_mean_squared_error',verbose=2) 
+        
         grid_search.fit(x_train, y_train,verbose=0)
+        grid_search.
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
         print("Best: %s using %f" % (best_params, best_score))
         
         # Train the final model
         final_model = create_model(hidden_layers=best_params['hidden_layers'], hidden_neurons=best_params['hidden_neurons'], activation=best_params['activation'], learning_rate=best_params['learning_rate'], rho=best_params['rho'], epsilon=best_params['epsilon'])
-        output_training=final_model.fit(x_train, y_train, epochs=24, batch_size=24, verbose=1, validation_data=(x_val, y_val))
+        output_training=final_model.fit(x_train, y_train, epochs=24, batch_size=24, verbose=1)
+                                        #,validation_data=(x_val, y_val)) not needed anymore since hyperparameters are already optimized
 
         # Print the training and validation loss
         mse_train=output_training.history['loss']
-        mse_val = output_training.history['val_loss']
         print('- mse_train is %.4f' % mse_train[-1] + ' @ ' + str(len(output_training.history['loss'])))
-        print('- mse_val is %.4f' % mse_val[-1] + ' @ ' + str(len(output_training.history['val_loss'])))
 
         # Evaluate the model
         #mse = model.evaluate(X_test_reshaped, y_test.values.reshape(-1, 1), verbose=0,batch_size=batch_size) #TODO: check why not working
@@ -144,15 +158,22 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         mse_test = mean_squared_error(y_test, test_pred)
         print('Mean Squared Error test:', mse_test) #Alternative way to evaluate the model
 
+        # Re-order the sets
+        x_train = x_train.sort_index()        
+        x_test = x_test.sort_index()
+        y_train = y_train.sort_index()
+        y_test = y_test.sort_index()
+        print(x_train, y_train, x_test, y_test)
         # Plot the test results
-        """
-        plt.plot(X_test.index, y_test, label='Actual')
-        plt.plot(X_test.index, test_pred.flatten(), label='Predicted')
+        
+        plt.plot(x_train.index, y_train, label='Train')
+        plt.plot(x_test.index, y_test, label='Actual')
+        plt.plot(x_test.index, test_pred.flatten(), label='Predicted')
         plt.xlabel('Time')
         plt.ylabel('Price_BE')
         plt.legend()
         plt.show()
-        """
+        
 
         # Make predictions
         predictions = final_model.predict(x_forecast)
@@ -163,7 +184,7 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
 
         # Print the predictions
         #print(predictions)
-        return predictions, mse_train, mse_val, mse_test
+        return predictions, mse_train, mse_test
 
 
 def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, activation: str='relu', learning_rate: float=0.001, rho: int=0.9, epsilon: float=1e-6, epochs: int=24, batch_size: int=24):
@@ -198,6 +219,16 @@ def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, a
         test_pred = model.predict(x_test).flatten()
         mse_test = mean_squared_error(y_test, test_pred)
         print('Mean Squared Error test:', mse_test) #Alternative way to evaluate the model
+
+        # Plot the test results
+        plt.plot(x_train.index, y_train, label='Train')
+        plt.plot(x_val.index, y_val, label='Validate')
+        plt.plot(x_test.index, y_test, label='Actual')
+        plt.plot(x_test.index, test_pred.flatten(), label='Predicted')
+        plt.xlabel('Time')
+        plt.ylabel('Price_BE')
+        plt.legend()
+        plt.show()
 
         # Make predictions
         predictions = model.predict(x_forecast)

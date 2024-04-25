@@ -1,6 +1,7 @@
 from typing import Tuple
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 # Path to the CSV file
 csv_file = 'Dataset For Forecasting Assignment.csv'
@@ -143,3 +144,26 @@ def split_train_val_test_random(data: pd.DataFrame, train_frac:float=0.7,val_fra
 
     return (x_train, y_train), (x_val, y_val), (x_test, y_test), x_forecast
 
+
+def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.33,shuffle:int=False)->Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Prepare the training and test data for the model.
+    :param data: The data to prepare.
+    :param test_size: The size of the test set (<1)
+    
+    :return: x_train, y_train, x_test, y_test and x_forecast as Numpy arrays.
+    """
+
+    # Define the start and end dates
+    start_date = pd.to_datetime('2021-01-01 00:00')
+    end_date = pd.to_datetime('2024-01-22 23:00')
+    
+    x_forecast=data[(data.index > end_date)][['Load_FR', 'Gen_FR', 'Price_CH', 'Wind_BE', 'Solar_BE','Load_BE']]
+
+    data=data[(data.index >= start_date) & (data.index <= end_date)]
+    x=data[['Load_FR', 'Gen_FR', 'Price_CH', 'Wind_BE', 'Solar_BE','Load_BE']]
+    y=data['Price_BE']
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=42,shuffle=shuffle)
+
+    return x_train, y_train, x_test, y_test, x_forecast

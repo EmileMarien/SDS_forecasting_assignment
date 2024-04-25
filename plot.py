@@ -110,7 +110,7 @@ def plot_training_validation_loss_rho(data, rhos):
     plt.figure()
 
     for rho in rhos:
-        predictions, mse_train, mse_val, mse_test = forecasting_model(data, time_steps=24, neurons=[24,1], activation_functions=['relu', 'linear'], learning_rate=0.01, rho=rho, epochs=48, batch_size=24, epsilon=1e-6)
+        predictions, mse_train, mse_val, mse_test = play_model(data, time_steps=24, neurons=[24,1], activation_functions=['relu', 'linear'], learning_rate=0.01, rho=rho, epochs=48, batch_size=24, epsilon=1e-6)
 
         # Plot mse_train
         plt.plot(mse_train[1:], label=f'Training loss (rho={rho})')
