@@ -20,14 +20,8 @@ from scipy.stats import randint as sp_randint
 
 from datagathering import split_train_val_test, prepare_train_test_forecast
 
-class CustomKerasRegressor(BaseEstimator, RegressorMixin):
-    def __init__(self, epsilon=1e-6, batch_size=32, epochs=24):
-        self.epsilon = epsilon
-        self.batch_size = batch_size
-        self.epochs= epochs
-        self.model = KerasRegressor(model=self.create_model)
 
-    def create_model(self, hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001, rho=0.9):
+def create_model(hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001,rho=0.9, epsilon=1e-6):
         """
         Build a sequential model with the specified architecture and parameters.
         :param input_shape: The shape of the input data features.
@@ -47,18 +41,12 @@ class CustomKerasRegressor(BaseEstimator, RegressorMixin):
 
         model.add(Dense(units=1, activation='linear')) # add an output layer (1 neuron since we are predicting a single value each time)
 
-        rprop = RMSprop(learning_rate=learning_rate, rho=rho, epsilon=self.epsilon) # type: ignore
+        rprop = RMSprop(learning_rate=learning_rate, rho=rho, epsilon=epsilon) # type: ignore
         model.compile(loss='mean_squared_error', optimizer=rprop) # compile the model
 
         return model
 
-    def fit(self, X, y, **kwargs):
-        return self.model.fit(X, y, batch_size=self.batch_size, epochs=self.epochs, **kwargs)
-
-    def predict(self, X, **kwargs):
-        return self.model.predict(X, **kwargs)
-
-def create_model(hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001,rho=0.9, epsilon=1e-6):
+def create_model2(hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001,rho=0.9, epsilon=1e-6):
         """
         Build a sequential model with the specified architecture and parameters.
         :param input_shape: The shape of the input data features.
@@ -70,6 +58,7 @@ def create_model(hidden_layers=1, hidden_neurons=6, activation='relu', learning_
         :param epsilon: The epsilon value for the optimizer.
         :return: The built model.
         """
+        #TODO: change to other model (LSTM)
         input_shape=(6,)
         model = Sequential() # build a sequential model
         model.add(Input(shape=input_shape)) # add an input layer with the shape of the input data features
@@ -116,7 +105,8 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         'hidden_neurons': [3, 6, 12],  #sp_randint(3, 12) 6, 12, 24
         'activation': ['relu'],   #, 'tanh', 'sigmoid'
         'learning_rate': [0.001, 0.01, 0.1],  
-        'rho': [0.9, 0.99, 0.999]  
+        'rho': [0.9, 0.99, 0.999],  
+        'beta': [0.9, 0.99, 0.999]
         }
 
         # Iterate over hyperparameters and add them to param_grid only if they are present in model_params
@@ -138,7 +128,6 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         #grid_search= RandomizedSearchCV(estimator=model, param_distributions=param_grid, n_iter=10, cv=2, scoring='neg_mean_squared_error',verbose=2) 
         
         grid_search.fit(x_train, y_train,verbose=0)
-        grid_search.
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
         print("Best: %s using %f" % (best_params, best_score))
@@ -148,7 +137,7 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         output_training=final_model.fit(x_train, y_train, epochs=24, batch_size=24, verbose=1)
                                         #,validation_data=(x_val, y_val)) not needed anymore since hyperparameters are already optimized
 
-        # Print the training and validation loss
+        # Print the training loss
         mse_train=output_training.history['loss']
         print('- mse_train is %.4f' % mse_train[-1] + ' @ ' + str(len(output_training.history['loss'])))
 
@@ -164,8 +153,8 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         y_train = y_train.sort_index()
         y_test = y_test.sort_index()
         print(x_train, y_train, x_test, y_test)
+
         # Plot the test results
-        
         plt.plot(x_train.index, y_train, label='Train')
         plt.plot(x_test.index, y_test, label='Actual')
         plt.plot(x_test.index, test_pred.flatten(), label='Predicted')
