@@ -46,7 +46,7 @@ def create_model(hidden_layers=1, hidden_neurons=6, activation='relu', learning_
 
         return model
 
-def create_model2(hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001,rho=0.9, epsilon=1e-6):
+def create_model_LSTM(hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001,rho=0.9, epsilon=1e-6):
         """
         Build a sequential model with the specified architecture and parameters.
         :param input_shape: The shape of the input data features.
@@ -61,14 +61,14 @@ def create_model2(hidden_layers=1, hidden_neurons=6, activation='relu', learning
         #TODO: change to other model (LSTM)
         input_shape=(6,)
         model = Sequential() # build a sequential model
-        model.add(Input(shape=input_shape)) # add an input layer with the shape of the input data features
-        for i in range(hidden_layers):
-                model.add(Dense(units=hidden_neurons, activation=activation)) # add a hidden layer for each hidden layer specified
-
+        model.add(LSTM(hidden_neurons, activation = activation, input_shape = input_shape)) #add an input layer with the shape of the input data features, and a hidden layer with LSTM-blocks (hidden neurons)
+        for i in range(hidden_layers-1):
+                model.add(LSTM(hidden_neurons, activation = activation))
         model.add(Dense(units=1, activation='linear')) # add an output layer (1 neuron since we are predicting a single value each time)
 
         rprop = RMSprop(learning_rate=learning_rate, rho=rho, epsilon=epsilon) # type: ignore
         model.compile(loss='mean_squared_error', optimizer=rprop) # compile the model
+
 
         return model
 
@@ -91,7 +91,7 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         #print(x_train, y_train, x_test, y_test, x_forecast)
         
         # Define the model
-        selected_model=create_model
+        selected_model=create_model_LSTM
 
         # Get the hyperparameters for the selected model
         model_params = inspect.signature(selected_model).parameters
@@ -100,8 +100,8 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         hyperparameters = {
         'epsilon': [1e-6],  #, 1e-7, 1e-8
         'batch_size': [24],  #, 32, 64
-        'epochs': [24,48,72], #, 48, 72
-        'hidden_layers': [1,2,3],  # , 2, 3
+        'epochs': [24], #, 48, 72
+        'hidden_layers': [1],  # , 2, 3
         'hidden_neurons': [6],  #sp_randint(3, 12) 6, 12, 24
         'activation': ['relu','tanh'],   #, 'tanh', 'sigmoid'
         'learning_rate': [0.01,0.001],  
