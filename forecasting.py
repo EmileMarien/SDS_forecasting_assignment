@@ -133,7 +133,7 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         
         # Train the final model
         final_model = create_model(hidden_layers=best_params['hidden_layers'], hidden_neurons=best_params['hidden_neurons'], activation=best_params['activation'], learning_rate=best_params['learning_rate'], rho=best_params['rho'], epsilon=best_params['epsilon'])
-
+        # print(final_model.summary())
         output_training=final_model.fit(x_train, y_train, epochs=best_params['epochs'], batch_size=best_params['batch_size'], verbose=1)
                                         #,validation_data=(x_val, y_val)) not needed anymore since hyperparameters are already optimized
 
