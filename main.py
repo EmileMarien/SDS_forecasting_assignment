@@ -26,7 +26,7 @@ print(data.head(10))
 #plot_lists(data.index, data['Price_BE'], legend=['Price_BE'], xlabel='Date', ylabel='Price', title='Price_BE')
 #data=remove_outliers(data,'Price_BE')
 
-predictions,mse_train,mse_test=optimized_model(data,model='LSTM')
+predictions,mse_train,mse_test=optimized_model(data,model='Dense')
 
 
 #plot_training_validation_loss(mse_train, mse_val)
