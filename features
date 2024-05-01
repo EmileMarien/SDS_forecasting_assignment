@@ -21,10 +21,14 @@ for d in dates:
         print(d)
 print(data.head(10))
 """
+df_solar = data.Solar_BE
+print(data.head())
+
+
 #plot_lists(data.index, data['Price_BE'], legend=['Price_BE'], xlabel='Date', ylabel='Price', title='Price_BE')
 #data=remove_outliers(data,'Price_BE')
 
-predictions,mse_train,mse_test=optimized_model(data,model='Dense')
+#predictions,mse_train,mse_test=optimized_model(data,model='Dense')
 
 
 #plot_training_validation_loss(mse_train, mse_val)
