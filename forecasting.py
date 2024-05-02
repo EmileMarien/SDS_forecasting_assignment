@@ -17,7 +17,7 @@ from sklearn.model_selection import GridSearchCV
 from scikeras.wrappers import KerasRegressor 
 from scipy.stats import randint as sp_randint
 
-
+from plot import plot_gridsearch_results
 from datagathering import split_train_val_test, prepare_train_test_forecast
 
 
@@ -90,6 +90,9 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape)
         #print(x_train, y_train, x_test, y_test, x_forecast)
         
+        # Normalize input data #TODO: check if normalizing has effect
+        
+
         # Define the model
         if model =='Dense':
                 selected_model=create_model_dense
@@ -104,13 +107,13 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         # Define the hyperparameters and their values
         hyperparameters = {
         'epsilon': [1e-6],  #, 1e-7, 1e-8
-        'batch_size': [24],  #, 32, 64
-        'epochs': [48], #, 48, 72
-        'hidden_layers': [1],  # , 2, 3
-        'hidden_neurons': [6],  #sp_randint(3, 12) 6, 12, 24
+        'batch_size': [32],  #, 32, 64
+        'epochs': [50], #, 48, 72
+        'hidden_layers': [3],  # , 2, 3
+        'hidden_neurons': [24],  #sp_randint(3, 12) 6, 12, 24
         'activation': ['relu'],   #, 'tanh', 'sigmoid'
-        'learning_rate': [0.01],  
-        'rho': [0.99],  
+        'learning_rate': [0.001],  
+        'rho': [0.9],  
         }
 
         # Iterate over hyperparameters and add them to param_grid only if they are present in model_params
@@ -127,19 +130,20 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         # Optimize hyperparameters
         KerasModel=KerasRegressor(model=selected_model,**param_grid,verbose=2) #Wrap the model in a KerasRegressor 
 
-        grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=2, scoring='neg_mean_squared_error',verbose=2) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
+        #grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
 
-        #grid_search= RandomizedSearchCV(estimator=model, param_distributions=param_grid, n_iter=10, cv=2, scoring='neg_mean_squared_error',verbose=2) 
+        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=100, cv=2, scoring='neg_mean_squared_error',verbose=2) 
         
         grid_search.fit(x_train, y_train,verbose=0)
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
+        plot_gridsearch_results(grid_search.cv_results_)
         print("Best: %s using %f" % (best_params, best_score))
         
         # Train the final model
         final_model = selected_model(hidden_layers=best_params['hidden_layers'], hidden_neurons=best_params['hidden_neurons'], activation=best_params['activation'], learning_rate=best_params['learning_rate'], rho=best_params['rho'], epsilon=best_params['epsilon'])
         print(final_model.summary())
-        
+
         output_training=final_model.fit(x_train, y_train, epochs=best_params['epochs'], batch_size=best_params['batch_size'], verbose=1)
                                         #,validation_data=(x_val, y_val)) not needed anymore since hyperparameters are already optimized
 
@@ -199,7 +203,7 @@ def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, a
         x_forecast=split_train_val_test(data)[3]
 
         # Build the model
-        model = create_model(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
+        model = create_model_dense(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
 
         # Train the model
         output_training=model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_data=(x_val, y_val))
