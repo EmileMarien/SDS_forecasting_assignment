@@ -17,7 +17,7 @@ from sklearn.model_selection import GridSearchCV
 from scikeras.wrappers import KerasRegressor 
 from scipy.stats import randint as sp_randint
 
-from plot import plot_gridsearch_results
+#from plot import plot_gridsearch_results
 from datagathering import split_train_val_test, prepare_train_test_forecast
 
 
@@ -108,9 +108,9 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         hyperparameters = {
         'epsilon': [1e-6],  #, 1e-7, 1e-8
         'batch_size': [32],  #, 32, 64
-        'epochs': [50], #, 48, 72
-        'hidden_layers': [3],  # , 2, 3
-        'hidden_neurons': [24],  #sp_randint(3, 12) 6, 12, 24
+        'epochs': [50,55,60], #, 48, 72
+        'hidden_layers': [3,4,5],  # , 2, 3
+        'hidden_neurons': [24,28,32,48],  #sp_randint(3, 12) 6, 12, 24
         'activation': ['relu'],   #, 'tanh', 'sigmoid'
         'learning_rate': [0.001],  
         'rho': [0.9],  
@@ -130,14 +130,14 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         # Optimize hyperparameters
         KerasModel=KerasRegressor(model=selected_model,**param_grid,verbose=2) #Wrap the model in a KerasRegressor 
 
-        #grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
+        grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
 
-        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=100, cv=2, scoring='neg_mean_squared_error',verbose=2) 
+        #grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=50, cv=3, scoring='neg_mean_squared_error',verbose=2) 
         
         grid_search.fit(x_train, y_train,verbose=0)
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
-        plot_gridsearch_results(grid_search.cv_results_)
+        #plot_gridsearch_results(grid_search.cv_results_)
         print("Best: %s using %f" % (best_params, best_score))
         
         # Train the final model

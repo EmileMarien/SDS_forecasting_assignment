@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 from datagathering import read_csv_file, remove_outliers
 from forecasting import optimized_model
-from plot import plot_lists, subplot, boxplot, plot_training_validation_loss, plot_training_validation_loss_lr, plot_training_validation_loss_rho
+#from plot import plot_lists, subplot, boxplot, plot_training_validation_loss, plot_training_validation_loss_lr, plot_training_validation_loss_rho
 
 data = read_csv_file('Dataset For Forecasting Assignment.csv')
 

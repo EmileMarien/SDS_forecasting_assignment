@@ -1,7 +1,7 @@
 import datetime
 import matplotlib.pyplot as plt
 import pandas as pd
-from forecasting import play_model, optimized_model
+from forecasting import optimized_model
 import seaborn as sns # type: ignore
 
 def plot_lists(x_values, y_values, legend=None, xlabel=None, ylabel=None, title=None):
