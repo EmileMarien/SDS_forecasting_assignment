@@ -8,6 +8,8 @@ from tensorflow.keras.models import Sequential # type: ignore
 from tensorflow.keras.layers import Dense, Input, LSTM # type: ignore
 from tensorflow.keras.optimizers import Adam, RMSprop # type: ignore
 from tensorflow.keras.losses import MeanSquaredError # type: ignore
+from tensorflow.keras.callbacks import EarlyStopping # type: ignore
+
 from typing import List, Tuple
 import numpy as np
 import pandas as pd
@@ -33,13 +35,13 @@ def create_model_dense(hidden_layers=1, hidden_neurons=6, activation='relu', lea
         :param epsilon: The epsilon value for the optimizer.
         :return: The built model.
         """
-        input_shape=(6,)
+        input_shape=(144,)
         model = Sequential() # build a sequential model
         model.add(Input(shape=input_shape)) # add an input layer with the shape of the input data features
         for i in range(hidden_layers):
                 model.add(Dense(units=hidden_neurons, activation=activation)) # add a hidden layer for each hidden layer specified
 
-        model.add(Dense(units=1, activation='linear')) # add an output layer (1 neuron since we are predicting a single value each time)
+        model.add(Dense(units=24, activation='linear')) # add an output layer (1 neuron since we are predicting a single value each time)
 
         rprop = RMSprop(learning_rate=learning_rate, rho=rho, epsilon=epsilon) # type: ignore
         model.compile(loss='mean_squared_error', optimizer=rprop) # compile the model
@@ -86,8 +88,8 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         :return: The test loss.
         """
         ## Prepare the data
-        x_train, y_train, x_test, y_test, x_forecast = prepare_train_test_forecast(data)
-        print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape)
+        x_train, y_train, x_test, y_test, x_forecast,indices_train,indices_test,indices_forecast = prepare_train_test_forecast(data)
+        print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape,indices_train.shape,indices_test.shape,indices_forecast.shape)
         #print(x_train, y_train, x_test, y_test, x_forecast)
         
         # Normalize input data #TODO: check if normalizing has effect
@@ -108,9 +110,9 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         hyperparameters = {
         'epsilon': [1e-6],  #, 1e-7, 1e-8
         'batch_size': [32],  #, 32, 64
-        'epochs': [50,55,60], #, 48, 72
-        'hidden_layers': [3,4,5],  # , 2, 3
-        'hidden_neurons': [24,28,32,48],  #sp_randint(3, 12) 6, 12, 24
+        'epochs': [40], #, 48, 72
+        'hidden_layers': [4],  # , 2, 3
+        'hidden_neurons': [100],  #sp_randint(3, 12) 6, 12, 24
         'activation': ['relu'],   #, 'tanh', 'sigmoid'
         'learning_rate': [0.001],  
         'rho': [0.9],  
@@ -128,13 +130,15 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         print(param_grid)
 
         # Optimize hyperparameters
-        KerasModel=KerasRegressor(model=selected_model,**param_grid,verbose=2) #Wrap the model in a KerasRegressor 
+        ea = EarlyStopping(monitor='loss', patience=100)
 
-        grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
+        KerasModel=KerasRegressor(model=selected_model,**param_grid,verbose=2,callbacks=[ea]) #Wrap the model in a KerasRegressor 
+
+        grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=0,n_jobs=-1) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
 
         #grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=50, cv=3, scoring='neg_mean_squared_error',verbose=2) 
         
-        grid_search.fit(x_train, y_train,verbose=0)
+        grid_search.fit(x_train, y_train,verbose=1)
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
         #plot_gridsearch_results(grid_search.cv_results_)
@@ -153,21 +157,22 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
 
         # Evaluate the model
         #mse = model.evaluate(X_test_reshaped, y_test.values.reshape(-1, 1), verbose=0,batch_size=batch_size) #TODO: check why not working
-        test_pred = final_model.predict(x_test).flatten()
+        test_pred = final_model.predict(x_test)
+        print(test_pred.shape, y_test.shape)
         mse_test = mean_squared_error(y_test, test_pred)
         print('Mean Squared Error test:', mse_test) #Alternative way to evaluate the model
 
         # Re-order the sets
-        x_train = x_train.sort_index()        
-        x_test = x_test.sort_index()
-        y_train = y_train.sort_index()
-        y_test = y_test.sort_index()
+        #x_train = x_train.sort_index()        
+        #x_test = x_test.sort_index()
+        #y_train = y_train.sort_index()
+        #y_test = y_test.sort_index()
         #print(x_train, y_train, x_test, y_test)
 
         # Plot the test results
-        plt.plot(x_train.index, y_train, label='Train')
-        plt.plot(x_test.index, y_test, label='Actual')
-        plt.plot(x_test.index, test_pred, label='Predicted')
+        plt.plot(indices_train, y_train, label='Train')
+        plt.plot(indices_test, y_test, label='Actual')
+        plt.plot(indices_test, test_pred, label='Predicted')
         plt.xlabel('Time')
         plt.ylabel('Price_BE')
         plt.legend()
