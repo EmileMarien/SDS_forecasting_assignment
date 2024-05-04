@@ -23,7 +23,7 @@ from scipy.stats import randint as sp_randint
 from datagathering import split_train_val_test, prepare_train_test_forecast
 
 
-def create_model_dense(hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001,rho=0.9, epsilon=1e-6):
+def create_model_dense(hidden_layers=1, input_length=24, output_length=24,hidden_neurons=6, activation='relu', learning_rate=0.001,rho=0.9, epsilon=1e-6):
         """
         Build a sequential model with the specified architecture and parameters.
         :param input_shape: The shape of the input data features.
@@ -35,13 +35,13 @@ def create_model_dense(hidden_layers=1, hidden_neurons=6, activation='relu', lea
         :param epsilon: The epsilon value for the optimizer.
         :return: The built model.
         """
-        input_shape=(144,)
+        input_shape=(input_length,)
         model = Sequential() # build a sequential model
         model.add(Input(shape=input_shape)) # add an input layer with the shape of the input data features
         for i in range(hidden_layers):
                 model.add(Dense(units=hidden_neurons, activation=activation)) # add a hidden layer for each hidden layer specified
 
-        model.add(Dense(units=24, activation='linear')) # add an output layer (1 neuron since we are predicting a single value each time)
+        model.add(Dense(units=output_length, activation='linear')) # add an output layer (1 neuron since we are predicting a single value each time)
 
         rprop = RMSprop(learning_rate=learning_rate, rho=rho, epsilon=epsilon) # type: ignore
         model.compile(loss='mean_squared_error', optimizer=rprop) # compile the model
@@ -105,16 +105,17 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
 
         # Get the hyperparameters for the selected model
         model_params = inspect.signature(selected_model).parameters
-        print(model_params)
         # Define the hyperparameters and their values
         hyperparameters = {
+        'output_length': [y_train.shape[1]],  #, 24, 48
+        'input_length': [x_train.shape[1]],  #, 24, 48
         'epsilon': [1e-6],  #, 1e-7, 1e-8
-        'batch_size': [32],  #, 32, 64
-        'epochs': [500], #, 48, 72
-        'hidden_layers': [4],  # , 2, 3
-        'hidden_neurons': [100],  #sp_randint(3, 12) 6, 12, 24
+        'batch_size': [8,16,32],  #, 32, 64
+        'epochs': [200,300,400,500], #, 48, 72
+        'hidden_layers': [2,3,4,5,6],  # , 2, 3
+        'hidden_neurons': [50,60,70,80,90,100,110,120],  #sp_randint(3, 12) 6, 12, 24
         'activation': ['relu'],   #, 'tanh', 'sigmoid'
-        'learning_rate': [0.001],  
+        'learning_rate': [0.001,0.01],  
         'rho': [0.9],  
         }
 
@@ -134,9 +135,9 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
 
         KerasModel=KerasRegressor(model=selected_model,**param_grid,verbose=2,callbacks=[ea]) #Wrap the model in a KerasRegressor 
 
-        grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
+        #grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
 
-        #grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=50, cv=3, scoring='neg_mean_squared_error',verbose=2) 
+        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=200, cv=3, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) 
         
         grid_search.fit(x_train, y_train,verbose=0)
         best_params = grid_search.best_params_

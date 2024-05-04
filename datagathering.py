@@ -171,9 +171,11 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.33)->Tuple[
 
 
     ## New
-    data.resample('H').mean()
-    n_hours=24
+    data.resample('h').mean()
+    n_hours=24*3
 
+    # Reduce data so it is a multiple of n_hours
+    data = data.iloc[(len(data) % n_hours):]
     # Define the start and end dates
     #start_date = pd.to_datetime('2021-01-02 00:00') 
     #end_date = pd.to_datetime('2024-01-6 23:00')
