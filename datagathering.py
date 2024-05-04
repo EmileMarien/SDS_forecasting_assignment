@@ -180,12 +180,13 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.33)->Tuple[
     #data=data[start_date:end_date]
 
     #original_indices = pd.date_range(start=start_date, end=end_date, freq='H')
-    shifts = {'Price_BE': n_hours*1, 'Load_FR': n_hours*1, 'Gen_FR': n_hours*1, 'Price_CH': n_hours*1, 'Wind_BE': n_hours*1, 'Solar_BE': n_hours*1}
+    shifts = {'Price_BE': n_hours*1, 'Load_FR': n_hours*1, 'Gen_FR': n_hours*1, 'Price_CH': n_hours*0, 'Wind_BE': n_hours*0, 'Solar_BE': n_hours*0}
 
     features_shifted = pd.concat([data[col].shift(shift) for col, shift in shifts.items()], axis=1)
+
     features=features_shifted.dropna()
     indices_train_test = features.index[:-n_hours]
-    indices_forecast = features.index[n_hours:]
+    indices_forecast = features.index[-n_hours:]
     features_reshaped=[]
     for col in shifts:
         features_reshaped.append(features[col].values.reshape(-1,n_hours))
@@ -227,17 +228,19 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.33)->Tuple[
     Y = data['Price_BE'].loc[indices_train_test].values.reshape(-1, n_hours)
     
     
-    print(X.shape)
-    print(Y.shape)
-    print(X_forecast.shape)
-    print(indices_train_test.shape)
+    #print(X.shape)
+    #print(Y.shape)
+    #print(X_forecast.shape)
+    #print(indices_train_test.shape)
 
-    
-    split_index = int((1 - test_size) * len(X))
-    x_train, x_test = X[:split_index], X[split_index:]
-    y_train, y_test = Y[:split_index], Y[split_index:]
-    indices_train,indices_test = indices_train_test[:split_index], indices_train_test[split_index:]
-
+    #print(X.shape)
+    split_index_X = int((1 - test_size) * len(X))
+    split_index_indices= split_index_X*24#int((1 - test_size) * len(indices_train_test))
+    #print(indices_train_test.shape)
+    x_train, x_test = X[:split_index_X], X[split_index_X:]
+    y_train, y_test = Y[:split_index_X], Y[split_index_X:]
+    indices_train,indices_test = indices_train_test[:split_index_indices], indices_train_test[split_index_indices:]
+    #print(x_train.shape,indices_train.shape,x_test.shape,indices_test.shape)
     #print(X_forecast)
     #print(X_forecast.shape)
     #print(X.shape,Y.shape)
