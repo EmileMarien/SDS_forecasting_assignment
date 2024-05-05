@@ -174,10 +174,7 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.33)->Tuple[
     data.resample('H').mean()
     n_hours=24
 
-    # Define the start and end dates
-    #start_date = pd.to_datetime('2021-01-02 00:00') 
-    #end_date = pd.to_datetime('2024-01-6 23:00')
-    #data=data[start_date:end_date]
+
 
     #original_indices = pd.date_range(start=start_date, end=end_date, freq='H')
     shifts = {'Price_BE': n_hours*1, 'Load_FR': n_hours*1, 'Gen_FR': n_hours*1, 'Price_CH': n_hours*0, 'Wind_BE': n_hours*0, 'Solar_BE': n_hours*0}
@@ -191,26 +188,6 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.33)->Tuple[
     for col in shifts:
         features_reshaped.append(features[col].values.reshape(-1,n_hours))
 
-    """
-        belpex_shift= 24*1
-    x_belpex = data['Price_BE'].shift(belpex_shift)[start_date:end_date].values.reshape(-1,n_hours)
-    #print(x_belpex.shape)
-    load_shift= 24*1
-    x_load = data['Load_FR'].shift(load_shift)[start_date:end_date].values.reshape(-1,n_hours)
-    #print(x_load.shape)
-    gen_shift= 24*1
-    x_gen = data['Gen_FR'].shift(gen_shift)[start_date:end_date].values.reshape(-1,n_hours)
-    #print(x_gen.shape)
-    price_shift= 24*1
-    x_price = data['Price_CH'].shift(price_shift)[start_date:end_date].values.reshape(-1,n_hours)
-    #print(x_price.shape)
-    wind_shift= 24*1
-    x_wind = data['Wind_BE'].shift(wind_shift)[start_date:end_date].values.reshape(-1,n_hours)
-    #print(x_wind.shape)
-    solar_shift= 24*1
-    x_solar = data['Solar_BE'].shift(solar_shift)[start_date:end_date].values.reshape(-1,n_hours)  
-    #print(x_solar.shape) 
-    """
 
     rows = features_reshaped[0].shape[0]-1 # number of entries in the training data
     col = features_reshaped[0].shape[1] # length of an entry of one feature in the training data
@@ -259,7 +236,7 @@ prepare_train_test_forecast(data, test_size=0.33)
 
 
 
-def preprocess_data(data, test_size=0.2, shuffle=True):
+def preprocess_data(data, test_size=0.2):
 
     n_hours=24 # Number of hours to take as input and output for prices and features
     # Resample data to hourly frequency
