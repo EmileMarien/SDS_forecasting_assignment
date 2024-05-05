@@ -8,6 +8,8 @@ from tensorflow.keras.models import Sequential # type: ignore
 from tensorflow.keras.layers import Dense, Input, LSTM # type: ignore
 from tensorflow.keras.optimizers import Adam, RMSprop # type: ignore
 from tensorflow.keras.losses import MeanSquaredError # type: ignore
+from tensorflow.keras.callbacks import EarlyStopping # type: ignore
+
 from typing import List, Tuple
 import numpy as np
 import pandas as pd
@@ -17,17 +19,11 @@ from sklearn.model_selection import GridSearchCV
 from scikeras.wrappers import KerasRegressor 
 from scipy.stats import randint as sp_randint
 
-
+#from plot import plot_gridsearch_results
 from datagathering import split_train_val_test, prepare_train_test_forecast
 
-class CustomKerasRegressor(BaseEstimator, RegressorMixin):
-    def __init__(self, epsilon=1e-6, batch_size=32, epochs=24):
-        self.epsilon = epsilon
-        self.batch_size = batch_size
-        self.epochs= epochs
-        self.model = KerasRegressor(model=self.create_model)
 
-    def create_model(self, hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001, rho=0.9):
+def create_model_dense(hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001,rho=0.9, epsilon=1e-6):
         """
         Build a sequential model with the specified architecture and parameters.
         :param input_shape: The shape of the input data features.
@@ -39,51 +35,46 @@ class CustomKerasRegressor(BaseEstimator, RegressorMixin):
         :param epsilon: The epsilon value for the optimizer.
         :return: The built model.
         """
-        input_shape=(6,)
+        input_shape=(144,)
         model = Sequential() # build a sequential model
         model.add(Input(shape=input_shape)) # add an input layer with the shape of the input data features
         for i in range(hidden_layers):
                 model.add(Dense(units=hidden_neurons, activation=activation)) # add a hidden layer for each hidden layer specified
 
-        model.add(Dense(units=1, activation='linear')) # add an output layer (1 neuron since we are predicting a single value each time)
-
-        rprop = RMSprop(learning_rate=learning_rate, rho=rho, epsilon=self.epsilon) # type: ignore
-        model.compile(loss='mean_squared_error', optimizer=rprop) # compile the model
-
-        return model
-
-    def fit(self, X, y, **kwargs):
-        return self.model.fit(X, y, batch_size=self.batch_size, epochs=self.epochs, **kwargs)
-
-    def predict(self, X, **kwargs):
-        return self.model.predict(X, **kwargs)
-
-def create_model(hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001,rho=0.9, epsilon=1e-6):
-        """
-        Build a sequential model with the specified architecture and parameters.
-        :param input_shape: The shape of the input data features.
-        :param hidden_layers: The number of hidden layers in the model.
-        :param hidden_neurons: The number of neurons in each hidden layer.
-        :param activation_function: The activation function for the hidden layers.
-        :param learning_rate: The learning rate for the optimizer.
-        :param rho: The rho value for the optimizer.
-        :param epsilon: The epsilon value for the optimizer.
-        :return: The built model.
-        """
-        input_shape=(6,)
-        model = Sequential() # build a sequential model
-        model.add(Input(shape=input_shape)) # add an input layer with the shape of the input data features
-        for i in range(hidden_layers):
-                model.add(Dense(units=hidden_neurons, activation=activation)) # add a hidden layer for each hidden layer specified
-
-        model.add(Dense(units=1, activation='linear')) # add an output layer (1 neuron since we are predicting a single value each time)
+        model.add(Dense(units=24, activation='linear')) # add an output layer (1 neuron since we are predicting a single value each time)
 
         rprop = RMSprop(learning_rate=learning_rate, rho=rho, epsilon=epsilon) # type: ignore
         model.compile(loss='mean_squared_error', optimizer=rprop) # compile the model
 
         return model
 
-def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[float], float]:
+def create_model_LSTM(hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001,rho=0.9, epsilon=1e-6):
+        """
+        Build a sequential model with the specified architecture and parameters.
+        :param input_shape: The shape of the input data features.
+        :param hidden_layers: The number of hidden layers in the model.
+        :param hidden_neurons: The number of neurons in each hidden layer.
+        :param activation_function: The activation function for the hidden layers.
+        :param learning_rate: The learning rate for the optimizer.
+        :param rho: The rho value for the optimizer.
+        :param epsilon: The epsilon value for the optimizer.
+        :return: The built model.
+        """
+        #TODO: change to other model (LSTM)
+        input_shape=(6,)
+        model = Sequential() # build a sequential model
+        model.add(LSTM(hidden_neurons, activation = activation, input_shape = input_shape)) #add an input layer with the shape of the input data features, and a hidden layer with LSTM-blocks (hidden neurons)
+        for i in range(hidden_layers-1):
+                model.add(LSTM(hidden_neurons, activation = activation))
+        model.add(Dense(units=1, activation='linear')) # add an output layer (1 neuron since we are predicting a single value each time)
+
+        rprop = RMSprop(learning_rate=learning_rate, rho=rho, epsilon=epsilon) # type: ignore
+        model.compile(loss='mean_squared_error', optimizer=rprop) # compile the model
+
+
+        return model
+
+def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, List[float], List[float], float]:
         """
         This function trains a forecasting model on the given data and returns the predictions. It optimizes the hyperparameters.
         :param data: The data to train the model on.
@@ -97,12 +88,20 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         :return: The test loss.
         """
         ## Prepare the data
-        x_train, y_train, x_test, y_test, x_forecast = prepare_train_test_forecast(data)
-        print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape)
-        print(x_train, y_train, x_test, y_test, x_forecast)
+        x_train, y_train, x_test, y_test, x_forecast,indices_train,indices_test,indices_forecast = prepare_train_test_forecast(data)
+        #print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape,indices_train.shape,indices_test.shape,indices_forecast.shape)
+        #print(x_train, y_train, x_test, y_test, x_forecast)
         
+        # Normalize input data #TODO: check if normalizing has effect
+        
+
         # Define the model
-        selected_model=create_model
+        if model =='Dense':
+                selected_model=create_model_dense
+        elif model =='LSTM':
+                selected_model=create_model_LSTM
+        else:
+                print('the provided model is not valid')
 
         # Get the hyperparameters for the selected model
         model_params = inspect.signature(selected_model).parameters
@@ -110,13 +109,13 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         # Define the hyperparameters and their values
         hyperparameters = {
         'epsilon': [1e-6],  #, 1e-7, 1e-8
-        'batch_size': [24],  #, 32, 64
-        'epochs': [24], #, 48, 72
-        'hidden_layers': [1],  # , 2, 3
-        'hidden_neurons': [3, 6, 12],  #sp_randint(3, 12) 6, 12, 24
+        'batch_size': [32],  #, 32, 64
+        'epochs': [500], #, 48, 72
+        'hidden_layers': [4],  # , 2, 3
+        'hidden_neurons': [100],  #sp_randint(3, 12) 6, 12, 24
         'activation': ['relu'],   #, 'tanh', 'sigmoid'
-        'learning_rate': [0.001, 0.01, 0.1],  
-        'rho': [0.9, 0.99, 0.999]  
+        'learning_rate': [0.001],  
+        'rho': [0.9],  
         }
 
         # Iterate over hyperparameters and add them to param_grid only if they are present in model_params
@@ -131,43 +130,49 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         print(param_grid)
 
         # Optimize hyperparameters
-        model=KerasRegressor(model=create_model,**param_grid,verbose=2) #Wrap the model in a KerasRegressor 
+        ea = EarlyStopping(monitor='loss', patience=100)
 
-        grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=2, scoring='neg_mean_squared_error',verbose=2) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
+        KerasModel=KerasRegressor(model=selected_model,**param_grid,verbose=2,callbacks=[ea]) #Wrap the model in a KerasRegressor 
 
-        #grid_search= RandomizedSearchCV(estimator=model, param_distributions=param_grid, n_iter=10, cv=2, scoring='neg_mean_squared_error',verbose=2) 
+        grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
+
+        #grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=50, cv=3, scoring='neg_mean_squared_error',verbose=2) 
         
         grid_search.fit(x_train, y_train,verbose=0)
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
+        #plot_gridsearch_results(grid_search.cv_results_)
         print("Best: %s using %f" % (best_params, best_score))
         
         # Train the final model
-        final_model = create_model(hidden_layers=best_params['hidden_layers'], hidden_neurons=best_params['hidden_neurons'], activation=best_params['activation'], learning_rate=best_params['learning_rate'], rho=best_params['rho'], epsilon=best_params['epsilon'])
-        output_training=final_model.fit(x_train, y_train, epochs=24, batch_size=24, verbose=1)
+        final_model = selected_model(hidden_layers=best_params['hidden_layers'], hidden_neurons=best_params['hidden_neurons'], activation=best_params['activation'], learning_rate=best_params['learning_rate'], rho=best_params['rho'], epsilon=best_params['epsilon'])
+        print(final_model.summary())
+
+        output_training=final_model.fit(x_train, y_train, epochs=best_params['epochs'], batch_size=best_params['batch_size'], verbose=0)
                                         #,validation_data=(x_val, y_val)) not needed anymore since hyperparameters are already optimized
 
-        # Print the training and validation loss
+        # Print the training loss
         mse_train=output_training.history['loss']
         print('- mse_train is %.4f' % mse_train[-1] + ' @ ' + str(len(output_training.history['loss'])))
 
         # Evaluate the model
         #mse = model.evaluate(X_test_reshaped, y_test.values.reshape(-1, 1), verbose=0,batch_size=batch_size) #TODO: check why not working
-        test_pred = final_model.predict(x_test).flatten()
+        test_pred = final_model.predict(x_test)
+        print(test_pred.shape, y_test.shape)
         mse_test = mean_squared_error(y_test, test_pred)
         print('Mean Squared Error test:', mse_test) #Alternative way to evaluate the model
 
         # Re-order the sets
-        x_train = x_train.sort_index()        
-        x_test = x_test.sort_index()
-        y_train = y_train.sort_index()
-        y_test = y_test.sort_index()
-        print(x_train, y_train, x_test, y_test)
+        #x_train = x_train.sort_index()        
+        #x_test = x_test.sort_index()
+        #y_train = y_train.sort_index()
+        #y_test = y_test.sort_index()
+        #print(x_train, y_train, x_test, y_test)
+
         # Plot the test results
-        
-        plt.plot(x_train.index, y_train, label='Train')
-        plt.plot(x_test.index, y_test, label='Actual')
-        plt.plot(x_test.index, test_pred.flatten(), label='Predicted')
+        plt.plot(indices_train, y_train.flatten(), label='Train')
+        plt.plot(indices_test, y_test.flatten(), label='Actual')
+        plt.plot(indices_test, test_pred.flatten(), label='Predicted')
         plt.xlabel('Time')
         plt.ylabel('Price_BE')
         plt.legend()
@@ -175,7 +180,7 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         
 
         # Make predictions
-        predictions = final_model.predict(x_forecast)
+        predictions = final_model.predict(x_forecast).flatten()
 
         # Inverse scale the predictions #TODO: check if necessary
         #predictions = scaler.inverse_transform(predictions)
@@ -203,7 +208,7 @@ def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, a
         x_forecast=split_train_val_test(data)[3]
 
         # Build the model
-        model = create_model(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
+        model = create_model_dense(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
 
         # Train the model
         output_training=model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_data=(x_val, y_val))

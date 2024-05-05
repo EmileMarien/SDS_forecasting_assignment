@@ -4,8 +4,8 @@
 from matplotlib import pyplot as plt
 import pandas as pd
 from datagathering import read_csv_file, remove_outliers
-from forecasting import optimized_model
-#from plot import plot_lists, subplot, boxplot, plot_training_validation_loss, plot_training_validation_loss_lr, plot_training_validation_loss_rho
+from forecasting import optimized_model, play_model
+from plot import plot_lists, subplot, boxplot, plot_training_validation_loss, plot_training_validation_loss_lr, plot_training_validation_loss_rho
 
 data = read_csv_file('Dataset For Forecasting Assignment.csv')
 
@@ -21,10 +21,14 @@ for d in dates:
         print(d)
 print(data.head(10))
 """
+df_solar = data.Solar_BE
+print(data.head())
+
+
 #plot_lists(data.index, data['Price_BE'], legend=['Price_BE'], xlabel='Date', ylabel='Price', title='Price_BE')
 #data=remove_outliers(data,'Price_BE')
 
-predictions,mse_train,mse_test=optimized_model(data,model='Dense')
+#predictions,mse_train,mse_test=optimized_model(data,model='Dense')
 
 
 #plot_training_validation_loss(mse_train, mse_val)
