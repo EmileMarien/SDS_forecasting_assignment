@@ -109,11 +109,11 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         hyperparameters = {
         'output_length': [y_train.shape[1]],  #, 24, 48
         'input_length': [x_train.shape[1]],  #, 24, 48
-        'epsilon': [1e-6],  #, 1e-7, 1e-8
+        'epsilon': [1e-6,1e-5],  #, 1e-7, 1e-8
         'batch_size': [8,16,32],  #, 32, 64
         'epochs': [200,300,400,500], #, 48, 72
         'hidden_layers': [2,3,4,5,6],  # , 2, 3
-        'hidden_neurons': [50,60,70,80,90,100,110,120],  #sp_randint(3, 12) 6, 12, 24
+        'hidden_neurons': [100,150,200,250,300,350,450,400,500,600],  #sp_randint(3, 12) 6, 12, 24
         'activation': ['relu'],   #, 'tanh', 'sigmoid'
         'learning_rate': [0.001,0.01],  
         'rho': [0.9],  
@@ -137,7 +137,7 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
 
         #grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
 
-        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=200, cv=3, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) 
+        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=300, cv=3, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) 
         
         grid_search.fit(x_train, y_train,verbose=0)
         best_params = grid_search.best_params_
