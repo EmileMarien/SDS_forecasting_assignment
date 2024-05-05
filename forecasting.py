@@ -138,7 +138,6 @@ def optimized_model(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], List[f
         #grid_search= RandomizedSearchCV(estimator=model, param_distributions=param_grid, n_iter=10, cv=2, scoring='neg_mean_squared_error',verbose=2) 
         
         grid_search.fit(x_train, y_train,verbose=0)
-        grid_search.
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
         print("Best: %s using %f" % (best_params, best_score))
