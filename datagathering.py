@@ -171,14 +171,25 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.33)->Tuple[
 
 
     ## New
-    data.resample('H').mean()
-    n_hours=24
+    data.resample('h').mean()
+    n_hours=24*3
 
+    # Reduce data so it is a multiple of n_hours
+    data = data.iloc[(len(data) % n_hours):]
+    # Define the start and end dates
+    #start_date = pd.to_datetime('2021-01-02 00:00') 
+    #end_date = pd.to_datetime('2024-01-6 23:00')
+    #data=data[start_date:end_date]
 
-
-    #original_indices = pd.date_range(start=start_date, end=end_date, freq='H')
-    shifts = {'Price_BE': n_hours*1, 'Load_FR': n_hours*1, 'Gen_FR': n_hours*1, 'Price_CH': n_hours*0, 'Wind_BE': n_hours*0, 'Solar_BE': n_hours*0}
-
+    # Shift columns to create features
+    shifts = {'Price_BE': n_hours*1, 'Price_BE': n_hours*2, 'Price_BE': n_hours*3,  'Price_BE': n_hours*6, 'Price_BE': n_hours*7,
+              'Load_FR': n_hours*1, 'Load_FR': n_hours*2,  'Load_FR': n_hours*7, 
+              'Gen_FR': n_hours*1, 'Gen_FR': n_hours*2,  'Gen_FR': n_hours*6, 'Gen_FR': n_hours*7,
+              'Price_CH': n_hours*1, 'Price_CH': n_hours*2, 'Price_CH': n_hours*3, 'Price_CH': n_hours*4, 'Price_CH': n_hours*5, 'Price_CH': n_hours*6, 'Price_CH': n_hours*7, 
+              'Wind_BE': n_hours*0, 
+              'Solar_BE': n_hours*1, 'Solar_BE': n_hours*2, 'Solar_BE': n_hours*3, 'Solar_BE': n_hours*4, 'Solar_BE': n_hours*5, 'Solar_BE': n_hours*6, 'Solar_BE': n_hours*7,
+              'Load_BE': n_hours*1, 'Load_BE': n_hours*2, 'Load_BE': n_hours*6, 'Load_BE': n_hours*7
+              }
     features_shifted = pd.concat([data[col].shift(shift) for col, shift in shifts.items()], axis=1)
 
     features=features_shifted.dropna()
@@ -243,7 +254,14 @@ def preprocess_data(data, test_size=0.2):
     data_hourly = data.resample('H').mean()
 
     # Shift columns to create features
-    shifts = {'Price_BE': n_hours*1, 'Load_FR': n_hours*1, 'Gen_FR': n_hours*1, 'Price_CH': n_hours*1, 'Wind_BE': n_hours*1, 'Solar_BE': n_hours*1}
+    shifts = {'Price_BE': n_hours*1, 
+              'Load_FR': n_hours*1, 
+              'Gen_FR': n_hours*1, 'Gen_FR': n_hours*7,
+              'Price_CH': n_hours*1, 
+              'Wind_BE': n_hours*0, 
+              'Solar_BE': n_hours*1,
+              'Load_BE': n_hours*1, 'Load_BE': n_hours*7
+              }
 
     Features = pd.concat([data_hourly[col].shift(shift).rename(f'{col}_shifted') for col, shift in shifts.items()], axis=1)
     
