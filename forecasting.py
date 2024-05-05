@@ -110,10 +110,10 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         'output_length': [y_train.shape[1]],  #, 24, 48
         'input_length': [x_train.shape[1]],  #, 24, 48
         'epsilon': [1e-6],  #, 1e-7, 1e-8
-        'batch_size': [16],  #, 32, 64
-        'epochs': [700], #, 48, 72
-        'hidden_layers': [5],  # , 2, 3
-        'hidden_neurons': [100],  #sp_randint(3, 12) 6, 12, 24
+        'batch_size': [16,32],  #, 32, 64
+        'epochs': [200,300,400,500], #, 48, 72
+        'hidden_layers': [5,6],  # , 2, 3
+        'hidden_neurons': [100,200,300],  #sp_randint(3, 12) 6, 12, 24
         'activation': ['relu'],   #, 'tanh', 'sigmoid'
         'learning_rate': [0.001],  
         'rho': [0.9],  
