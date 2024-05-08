@@ -145,7 +145,7 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         :return: The test loss.
         """
         ## Prepare the data
-        x_train, y_train, x_test, y_test, x_forecast,indices_train,indices_test,indices_forecast = prepare_train_test_forecast(data)
+        x_train, y_train, x_test, y_test, x_forecast,indices_train,indices_test,indices_forecast = prepare_train_test_forecast(data,test_size=0.05)
         #print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape,indices_train.shape,indices_test.shape,indices_forecast.shape)
         #print(x_train, y_train, x_test, y_test, x_forecast)
         
@@ -166,18 +166,14 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         hyperparameters = {
         'output_length': [y_train.shape[1]],  #, 24, 48
         'input_length': [x_train.shape[1]],  #, 24, 48
-        'epsilon': [1e-6],  #, 1e-7, 1e-8
-        'batch_size': [16,32],  #, 32, 64
-        'epochs': [200,300,400,500], #, 48, 72
-        'hidden_layers': [5,6],  # , 2, 3
-        'hidden_neurons': [100,200,300],  #sp_randint(3, 12) 6, 12, 24
+        'epsilon': [1e-6,1e-7,1e-8,1e-5],  #, 1e-7, 1e-8
+        'batch_size': [8,16,32,48],  #, 32, 64
+        'epochs': [200,300,400], #, 48, 72
+        'hidden_layers': [1,2,3,4,5,6],  # , 2, 3
+        'hidden_neurons': [24,48,62,78,94,32],  #sp_randint(3, 12) 6, 12, 24
         'activation': ['relu'],   #, 'tanh', 'sigmoid'
-        'learning_rate': [0.001],  
-        'rho': [0.9],
-        'beta_1': [0.9,0.99],
-        'beta_2': [0.99, 0.999],
-        'momentum': [0.8, 0.9, 0.95, 0.99],
-        'nesterov': [True, False],
+        'learning_rate': [0.001,0.01,0.1],  #, 0.01, 0.1
+        'rho': [0.9,0.999,0.99]  #, 0.99, 0.999
         }
 
         # Iterate over hyperparameters and add them to param_grid only if they are present in model_params
@@ -199,7 +195,7 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
 
         #grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
 
-        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=300, cv=2, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) 
+        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=200, cv=2, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) 
         
         grid_search.fit(x_train, y_train,verbose=0)
         best_params = grid_search.best_params_
@@ -255,29 +251,39 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         return predictions, mse_train, mse_test
 
 
-def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, activation: str='relu', learning_rate: float=0.001, rho: int=0.9, epsilon: float=1e-6, epochs: int=24, batch_size: int=24):
+def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, activation: str='relu', learning_rate: float=0.001, rho: int=0.9, epsilon: float=1e-6, epochs: int=24, batch_size: int=24,model:str='Dense') -> Tuple[np.ndarray, List[float], List[float], float]:
         """
         This function trains a forecasting model on the given data and returns the predictions. It allows to play with the hyperparameters.
         """
         ## Prepare the data
-        x_train=split_train_val_test(data)[0][0]
-        y_train=split_train_val_test(data)[0][1]
+        #x_train=split_train_val_test(data)[0][0]
+        #y_train=split_train_val_test(data)[0][1]
 
-        x_val=split_train_val_test(data)[1][0]
-        y_val=split_train_val_test(data)[1][1]
+        #x_val=split_train_val_test(data)[1][0]
+        #y_val=split_train_val_test(data)[1][1]
 
-        x_test=split_train_val_test(data)[2][0]
-        y_test=split_train_val_test(data)[2][1]
+        #x_test=split_train_val_test(data)[2][0]
+        #y_test=split_train_val_test(data)[2][1]
 
-        x_forecast=split_train_val_test(data)[3]
-
+        #x_forecast=split_train_val_test(data)[3]
+        x_train, y_train, x_test, y_test, x_forecast,indices_train,indices_test,indices_forecast = prepare_train_test_forecast(data,test_size=0.05)
+        print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape,indices_train.shape,indices_test.shape,indices_forecast.shape)
         # Build the model
         model = create_model_LSTM(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
         model = create_model_dense(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
+                # Define the model
+        if model =='Dense':
+                selected_model=create_model_dense
+        elif model =='LSTM':
+                selected_model=create_model_LSTM
+        else:
+                print('the provided model is not valid')
+
+        model = selected_model(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon, input_length=x_train.shape[1], output_length=y_train.shape[1])
 
         # Train the model
-        output_training=model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_data=(x_val, y_val))
-
+        #output_training=model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_data=(x_val, y_val))
+        output_training=model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_split=0.2)
         # Print the training and validation loss
         mse_train=output_training.history['loss']
         mse_val = output_training.history['val_loss']
@@ -286,7 +292,7 @@ def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, a
               
         # Evaluate the model
         test_pred = model.predict(x_test).flatten()
-        mse_test = mean_squared_error(y_test, test_pred)
+        mse_test = mean_squared_error(y_test.flatten(), test_pred)
         print('Mean Squared Error test:', mse_test) #Alternative way to evaluate the model
 
         # Plot the test results
@@ -298,6 +304,13 @@ def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, a
         #plt.ylabel('Price_BE')
         #plt.legend()
         #plt.show()
+        plt.plot(indices_train, y_train.flatten(), label='Train')
+        plt.plot(indices_test, y_test.flatten(), label='Actual')
+        plt.plot(indices_test, test_pred.flatten(), label='Predicted')
+        plt.xlabel('Time')
+        plt.ylabel('Price_BE')
+        plt.legend()
+        plt.show()
 
         # Make predictions
         predictions = model.predict(x_forecast)

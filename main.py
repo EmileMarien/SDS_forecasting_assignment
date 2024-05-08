@@ -4,7 +4,7 @@
 from matplotlib import pyplot as plt
 import pandas as pd
 from datagathering import read_csv_file, remove_outliers
-from forecasting import optimized_model, play_model_LSTM, play_model
+from forecasting import optimized_model, play_model, play_model_LSTM, play_model
 #from plot import plot_lists, subplot, boxplot, plot_training_validation_loss, plot_training_validation_loss_lr, plot_training_validation_loss_rho
 
 data = read_csv_file('Dataset For Forecasting Assignment.csv')
@@ -32,6 +32,7 @@ print(data.head(10))
 predictions,mse_train,mse_test=optimized_model(data,model='Dense')
 
 
+#predictions,mse_train,mse_test=play_model(data,model='Dense',learning_rate=0.001,rho=0.9,epochs=200,hidden_neurons=62,batch_size=24,hidden_layers=2,epsilon=1e-6)
 
 #plot_training_validation_loss(mse_train, mse_val)
 #plot_lists(predictions.index,predictions, legend=['Price_BE'], xlabel='Date', ylabel='Price', title='Price_BE')

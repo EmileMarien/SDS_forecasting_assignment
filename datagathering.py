@@ -106,6 +106,22 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.33)->Tuple[
             #'Load_FR2': n_hours*2,
             #'Load_FR6': n_hours*6,
         },
+        'Wind_BE': {
+            #'Wind_BE0': n_hours*0,
+            #'Wind_BE1': n_hours*1,
+            #'Wind_BE2': n_hours*2,
+            #'Wind_BE6': n_hours*6,
+        },
+        'Solar_BE': {
+            #'Solar_BE0': n_hours*0,
+            #'Solar_BE1': n_hours*1,
+            #'Solar_BE2': n_hours*2,
+            #'Solar_BE3': n_hours*3,
+            #'Solar_BE4': n_hours*4,
+            #'Solar_BE5': n_hours*5,
+            #'Solar_BE6': n_hours*6,
+            #'Solar_BE7': n_hours*7,
+        },
         'Gen_FR': {
             #'Gen_FR0': n_hours*0,
             #'Gen_FR1': n_hours*1,
