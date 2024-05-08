@@ -48,31 +48,33 @@ def create_model_dense(hidden_layers=1, input_length=24, output_length=24,hidden
 
         return model
 
-def create_model_LSTM(hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001,rho=0.9, epsilon=1e-6):
-        """
-        Build a sequential model with the specified architecture and parameters.
-        :param input_shape: The shape of the input data features.
-        :param hidden_layers: The number of hidden layers in the model.
-        :param hidden_neurons: The number of neurons in each hidden layer.
-        :param activation_function: The activation function for the hidden layers.
-        :param learning_rate: The learning rate for the optimizer.
-        :param rho: The rho value for the optimizer.
-        :param epsilon: The epsilon value for the optimizer.
-        :return: The built model.
-        """
-        #TODO: change to other model (LSTM)
-        input_shape=(6,)
-        model = Sequential() # build a sequential model
-        model.add(LSTM(hidden_neurons, activation = activation, input_shape = input_shape)) #add an input layer with the shape of the input data features, and a hidden layer with LSTM-blocks (hidden neurons)
-        for i in range(hidden_layers-1):
-                model.add(LSTM(hidden_neurons, activation = activation))
-        model.add(Dense(units=1, activation='linear')) # add an output layer (1 neuron since we are predicting a single value each time)
+def create_model_LSTM(hidden_layers=1, hidden_neurons=6, activation='relu', learning_rate=0.001, rho=0.9, epsilon=1e-6):
+    """
+    Build an LSTM model with the specified architecture and parameters.
+    :param hidden_layers: The number of LSTM layers in the model.
+    :param hidden_neurons: The number of neurons in each LSTM layer.
+    :param activation: The activation function for the LSTM layers.
+    :param learning_rate: The learning rate for the optimizer.
+    :param rho: The rho value for the optimizer.
+    :param epsilon: The epsilon value for the optimizer.
+    :return: The built model.
+    """
+    input_shape = (1, 6)  # Assuming input shape is (batch_size, timesteps, input_dim)
+    model = Sequential()  # Build a sequential model
+    model.add(Input(shape=input_shape))  # Add an input layer with the shape of the input data features
 
-        rprop = RMSprop(learning_rate=learning_rate, rho=rho, epsilon=epsilon) # type: ignore
-        model.compile(loss='mean_squared_error', optimizer=rprop) # compile the model
+    for i in range(hidden_layers):
+        # Add LSTM layers
+        model.add(LSTM(hidden_neurons, activation=activation, return_sequences=True if i < hidden_layers - 1 else False))
 
+    model.add(Dense(units=1, activation='linear'))  # Add an output layer (1 neuron for regression)
 
-        return model
+    # Configure optimizer
+    rprop = RMSprop(learning_rate=learning_rate, rho=rho, epsilon=epsilon)
+
+    model.compile(loss='mean_squared_error', optimizer=rprop)  # Compile the model
+
+    return model
 
 def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, List[float], List[float], float]:
         """
@@ -131,6 +133,7 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         print(param_grid)
 
         # Optimize hyperparameters
+        model=KerasRegressor(model=selected_model,**param_grid,verbose=2) #Wrap the model in a KerasRegressor 
         ea = EarlyStopping(monitor='loss', patience=100)
 
         KerasModel=KerasRegressor(model=selected_model,**param_grid,verbose=2,callbacks=[ea]) #Wrap the model in a KerasRegressor 
@@ -211,6 +214,8 @@ def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, a
         x_train, y_train, x_test, y_test, x_forecast,indices_train,indices_test,indices_forecast = prepare_train_test_forecast(data,test_size=0.05)
         print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape,indices_train.shape,indices_test.shape,indices_forecast.shape)
         # Build the model
+        model = create_model_LSTM(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
+        model = create_model_dense(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
                 # Define the model
         if model =='Dense':
                 selected_model=create_model_dense
@@ -236,6 +241,14 @@ def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, a
         print('Mean Squared Error test:', mse_test) #Alternative way to evaluate the model
 
         # Plot the test results
+        #plt.plot(x_train.index, y_train, label='Train')
+        #plt.plot(x_val.index, y_val, label='Validate')
+        #plt.plot(x_test.index, y_test, label='Actual')
+        #plt.plot(x_test.index, test_pred.flatten(), label='Predicted')
+        #plt.xlabel('Time')
+        #plt.ylabel('Price_BE')
+        #plt.legend()
+        #plt.show()
         plt.plot(indices_train, y_train.flatten(), label='Train')
         plt.plot(indices_test, y_test.flatten(), label='Actual')
         plt.plot(indices_test, test_pred.flatten(), label='Predicted')
@@ -248,6 +261,50 @@ def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, a
         predictions = model.predict(x_forecast)
 
         return predictions, mse_train, mse_val, mse_test
+
+def play_model_LSTM(data: pd.DataFrame, hidden_layers: int=1, hidden_neurons: int=6, activation: str='relu', learning_rate: float=0.001, rho: int=0.9, epsilon: float=1e-6, epochs: int=24, batch_size: int=24):
+    """
+    This function trains a forecasting model on the given data and returns the predictions. It allows to play with the hyperparameters.
+    """
+    ## Prepare the data
+    x_train = split_train_val_test(data)[0][0]
+    y_train = split_train_val_test(data)[0][1]
+
+    x_val = split_train_val_test(data)[1][0]
+    y_val = split_train_val_test(data)[1][1]
+
+    x_test = split_train_val_test(data)[2][0]
+    y_test = split_train_val_test(data)[2][1]
+
+    x_forecast = split_train_val_test(data)[3]
+
+    # Reshape input data for LSTM
+    x_train_reshaped = x_train.reshape(x_train.shape[0], 1, x_train.shape[1])
+    x_val_reshaped = x_val.reshape(x_val.shape[0], 1, x_val.shape[1])
+    x_test_reshaped = x_test.reshape(x_test.shape[0], 1, x_test.shape[1])
+    x_forecast_reshaped = x_forecast.reshape(x_forecast.shape[0], 1, x_forecast.shape[1])
+
+    # Build the model
+    model = create_model_LSTM(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
+
+    # Train the model
+    output_training = model.fit(x_train_reshaped, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_data=(x_val_reshaped, y_val))
+
+    # Print the training and validation loss
+    mse_train = output_training.history['loss']
+    mse_val = output_training.history['val_loss']
+    print('- mse_train is %.4f' % mse_train[-1] + ' @ ' + str(len(output_training.history['loss'])))
+    print('- mse_val is %.4f' % mse_val[-1] + ' @ ' + str(len(output_training.history['val_loss'])))
+
+    # Evaluate the model
+    test_pred = model.predict(x_test_reshaped).flatten()
+    mse_test = mean_squared_error(y_test, test_pred)
+    print('Mean Squared Error test:', mse_test)  # Alternative way to evaluate the model
+
+    # Make predictions
+    predictions = model.predict(x_forecast_reshaped)
+
+    return predictions, mse_train, mse_val, mse_test
 
 # TODO: check if below model can be used too
         # Build the model
