@@ -28,9 +28,9 @@ print(data.head(10))
 
 predictions,mse_train,mse_val,mse_test=play_model_LSTM(data, optimizer='adam')
 
-
-#predictions,mse_train,mse_val,mse_test=optimized_model(data,model='LSTM')
-#predictions,mse_train,mse_test=optimized_model(data,model='LSTM')
+  
+#predictions,mse_train,mse_val,mse_test=optimized_model(data,model='Dense')
+#predictions,mse_train,mse_test=optimized_model(data,model='Dense')
 
 
 #predictions,mse_train,mse_test=play_model(data,model='Dense',learning_rate=0.001,rho=0.999,epochs=250,hidden_neurons=48,batch_size=24,hidden_layers=3,epsilon=1e-6)

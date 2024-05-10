@@ -51,7 +51,7 @@ def remove_outliers(data, column_name):
 
     return data
 
-def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.33)->Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.05)->Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Prepare the training and test data for the model.
     :param data: The data to prepare.
@@ -78,7 +78,7 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.33)->Tuple[
 
     ## New
     data.resample('h').mean()
-    n_hours=24*3
+    n_hours=24
 
     # Reduce data so it is a multiple of n_hours
     data = data.iloc[(len(data) % n_hours):]

@@ -65,18 +65,13 @@ def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, a
         #x_forecast=split_train_val_test(data)[3]
         x_train, y_train, x_test, y_test, x_forecast,indices_train,indices_test,indices_forecast = prepare_train_test_forecast(data,test_size=0.05)
         print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape,indices_train.shape,indices_test.shape,indices_forecast.shape)
-        # Build the model
-        model = create_model_LSTM(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
-        model = create_model_dense(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
-                # Define the model
-        if model =='Dense':
-                selected_model=create_model_dense
-        elif model =='LSTM':
-                selected_model=create_model_LSTM
-        else:
-                print('the provided model is not valid')
 
-        model = selected_model(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon, input_length=x_train.shape[1], output_length=y_train.shape[1])
+        # Build the model
+
+        model = create_model_dense(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon, input_length=x_train.shape[1], output_length=y_train.shape[1])
+        x_forecast = split_train_val_test(data)[3]
+
+        print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape)
 
         # Train the model
         #output_training=model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_data=(x_val, y_val))
@@ -155,9 +150,16 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         'hidden_layers': [1],#2,3,4,5,6],  # , 2, 3
         'hidden_neurons': [24],#48,62,78,94,32],  #sp_randint(3, 12) 6, 12, 24
         'activation': ['relu'],   #, 'tanh', 'sigmoid'
-        'learning_rate': [0.001],#0.01,0.1],  #, 0.01, 0.1
-        'rho': [0.9],#0.999,0.99]  #, 0.99, 0.999
+        'learning_rate': [0.001],  #, 0.01, 0.1
+        'rho': [0.9],  #, 0.99, 0.999
+        'beta_1': [0.99],  #, 0.99, 0.999
+        'beta_2': [0.999],  #, 0.99, 0.999
+        'momentum': [0.95],  #, 0.95, 0.99
+        'nesterov': [True]  #, True, False
+
         }
+
+
 
         # Iterate over hyperparameters and add them to param_grid only if they are present in model_params
         param_grid = {}
@@ -178,9 +180,9 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
 
         #grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
 
-        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=80, cv=2, scoring='neg_mean_squared_error',verbose=2,n_jobs=1) 
-        
-        grid_search.fit(x_train, y_train,verbose=0)
+        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=10, cv=2, scoring='neg_mean_squared_error',verbose=2,n_jobs=1) 
+        print('test')
+        grid_search.fit(x_train, y_train,verbose=1)
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
         #plot_gridsearch_results(grid_search.cv_results_)
