@@ -103,6 +103,7 @@ def play_model_LSTM(data: pd.DataFrame, hidden_layers: int = 1, hidden_neurons: 
 
     x_forecast = split_train_val_test(data)[3]
 
+    print(x_train.shape, y_train.shape, x_val.shape, y_val.shape, x_test.shape, y_test.shape, x_forecast.shape)
     # Reshape input data for LSTM
     x_train_reshaped = np.expand_dims(x_train, axis=2)
     x_val_reshaped = np.expand_dims(x_val, axis=2)
@@ -166,22 +167,22 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         hyperparameters = {
         'output_length': [y_train.shape[1]],  #, 24, 48
         'input_length': [x_train.shape[1]],  #, 24, 48
-        'epsilon': [1e-6,1e-7,1e-8,1e-5],  #, 1e-7, 1e-8
-        'batch_size': [8,16,32,48],  #, 32, 64
-        'epochs': [150,200,250], #, 48, 72
-        'hidden_layers': [2,3,4,5],  # , 2, 3
-        'hidden_neurons': [24,48,62,78,32,54],  #sp_randint(3, 12) 6, 12, 24
+        'epsilon': [1e-6],  #, 1e-7, 1e-8
+        'batch_size': [24],  #, 32, 64
+        'epochs': [24], #, 48, 72
+        'hidden_layers': [1],  # , 2, 3
+        'hidden_neurons': [6],  #sp_randint(3, 12) 6, 12, 24
         'activation': ['relu'],   #, 'tanh', 'sigmoid'
-        'learning_rate': [0.001,0.01,0.1],  #, 0.01, 0.1
-        'rho': [0.9,0.999,0.99],  #, 0.99, 0.999
-        'beta_1': [0.9,0.99,0.999],  #, 0.99, 0.999
-        'beta_2': [0.9,0.99,0.999],  #, 0.99, 0.999
-        'momentum': [0.9,0.95,0.99],  #, 0.95, 0.99
-        'nesterov': [True, False]  #, True, False
+        'learning_rate': [0.001],  #, 0.01, 0.1
+        'rho': [0.9],  #, 0.99, 0.999
+        'beta_1': [0.99],  #, 0.99, 0.999
+        'beta_2': [0.999],  #, 0.99, 0.999
+        'momentum': [0.95],  #, 0.95, 0.99
+        'nesterov': [True]  #, True, False
 
         }
 
-        
+
 
         # Iterate over hyperparameters and add them to param_grid only if they are present in model_params
         param_grid = {}
@@ -202,9 +203,9 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
 
         #grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
 
-        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=80, cv=2, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) 
-        
-        grid_search.fit(x_train, y_train,verbose=0)
+        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=10, cv=2, scoring='neg_mean_squared_error',verbose=2,n_jobs=1) 
+        print('test')
+        grid_search.fit(x_train, y_train,verbose=1)
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
         #plot_gridsearch_results(grid_search.cv_results_)
