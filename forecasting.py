@@ -65,29 +65,13 @@ def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, a
         #x_forecast=split_train_val_test(data)[3]
         x_train, y_train, x_test, y_test, x_forecast,indices_train,indices_test,indices_forecast = prepare_train_test_forecast(data,test_size=0.05)
         print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape,indices_train.shape,indices_test.shape,indices_forecast.shape)
+
         # Build the model
-        model = create_model_LSTM(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
-        model = create_model_dense(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon)
-                # Define the model
-        if model =='Dense':
-                selected_model=create_model_dense
-        elif model =='LSTM':
-                selected_model=create_model_LSTM
-        else:
-                print('the provided model is not valid')
 
-        model = selected_model(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon, input_length=x_train.shape[1], output_length=y_train.shape[1])
-    x_forecast = split_train_val_test(data)[3]
+        model = create_model_dense(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon, input_length=x_train.shape[1], output_length=y_train.shape[1])
+        x_forecast = split_train_val_test(data)[3]
 
-    print(x_train.shape, y_train.shape, x_val.shape, y_val.shape, x_test.shape, y_test.shape, x_forecast.shape)
-    # Reshape input data for LSTM
-    x_train_reshaped = np.expand_dims(x_train, axis=2)
-    x_val_reshaped = np.expand_dims(x_val, axis=2)
-    x_test_reshaped = np.expand_dims(x_test, axis=2)
-    x_forecast_reshaped = np.expand_dims(x_forecast, axis=2)
-
-    # Build the model
-    model = create_model_LSTM(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, optimizer=optimizer, learning_rate=learning_rate, rho=rho, epsilon=epsilon, beta_1=beta_1, beta_2=beta_2, momentum=momentum, nesterov=nesterov)
+        print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape)
 
         # Train the model
         #output_training=model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_data=(x_val, y_val))
