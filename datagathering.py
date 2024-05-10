@@ -78,7 +78,7 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.33)->Tuple[
 
     ## New
     data.resample('h').mean()
-    n_hours=24
+    n_hours=24*3
 
     # Reduce data so it is a multiple of n_hours
     data = data.iloc[(len(data) % n_hours):]
@@ -190,7 +190,7 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.33)->Tuple[
 
     #print(X.shape)
     split_index_X = int((1 - test_size) * len(X))
-    split_index_indices= split_index_X*24#int((1 - test_size) * len(indices_train_test))
+    split_index_indices= split_index_X*n_hours#int((1 - test_size) * len(indices_train_test))
     #print(indices_train_test.shape)
     x_train, x_test = X[:split_index_X], X[split_index_X:]
     y_train, y_test = Y[:split_index_X], Y[split_index_X:]

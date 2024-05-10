@@ -178,7 +178,7 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
 
         #grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
 
-        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=200, cv=2, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) 
+        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=80, cv=2, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) 
         
         grid_search.fit(x_train, y_train,verbose=0)
         best_params = grid_search.best_params_
