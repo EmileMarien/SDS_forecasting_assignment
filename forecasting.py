@@ -318,6 +318,111 @@ def play_model_LSTM(data: pd.DataFrame, hidden_layers: int = 1, hidden_neurons: 
 
     return predictions, mse_train, mse_val, mse_test
 
+def optimized_model_LSTM(data: pd.DataFrame, model: str = 'Dense') -> Tuple[np.ndarray, List[float], List[float], float]:
+    """
+    This function trains a forecasting model on the given data and returns the predictions. It optimizes the hyperparameters.
+    :param data: The data to train the model on.
+    :param model: The type of model to use ('Dense' or 'LSTM').
+
+    :return: The predictions made by the model.
+    :return: The training loss.
+    :return: The test loss.
+    """
+
+    ## Prepare the data
+    x_train, y_train, x_test, y_test, x_forecast, indices_train, indices_test, indices_forecast = prepare_train_test_forecast(data, test_size=0.05)
+
+    # Reshape input data for LSTM
+    x_train_reshaped = np.expand_dims(x_train, axis=2)
+    x_test_reshaped = np.expand_dims(x_test, axis=2)
+    x_forecast_reshaped = np.expand_dims(x_forecast, axis=2)
+
+    # Define the model
+    if model == 'Dense':
+        selected_model = create_model_dense
+    elif model == 'LSTM':
+        selected_model = create_model_LSTM
+    else:
+        print('The provided model is not valid')
+
+    # Get the hyperparameters for the selected model
+    model_params = inspect.signature(selected_model).parameters
+
+    # Define the hyperparameters and their values
+    hyperparameters = {
+        'output_length': [y_train.shape[1]],
+        'input_length': [x_train.shape[1]],
+        'epsilon': [1e-6],
+        'batch_size': [8],
+        'epochs': [16],
+        'hidden_layers': [1],
+        'hidden_neurons': [24],
+        'activation': ['relu'],
+        'learning_rate': [0.001],
+        'rho': [0.9],
+        'beta_1': [0.99],
+        'beta_2': [0.999],
+        'momentum': [0.95],
+        'nesterov': [True],
+    }
+
+    # Iterate over hyperparameters and add them to param_grid only if they are present in model_params
+    param_grid = {}
+    for param, values in hyperparameters.items():
+        if param in model_params:
+            param_grid[param] = values
+        if param == 'batch_size':
+            param_grid[param] = values
+        if param == 'epochs':
+            param_grid[param] = values
+
+    # Optimize hyperparameters
+    KerasModel = KerasRegressor(model=selected_model, **param_grid, verbose=2)
+    ea = EarlyStopping(monitor='loss', patience=100)
+
+    grid_search = RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=10, cv=2,
+                                     scoring='neg_mean_squared_error', verbose=2, n_jobs=1)
+    print('test')
+    grid_search.fit(x_train_reshaped, y_train, verbose=1)
+    best_params = grid_search.best_params_
+    best_score = grid_search.best_score_
+
+    print("Best: %s using %f" % (best_params, best_score))
+
+    # Train the final model
+    final_model = selected_model(input_length=best_params['input_length'], output_length=best_params['output_length'],
+                                 hidden_layers=best_params['hidden_layers'], hidden_neurons=best_params['hidden_neurons'],
+                                 activation=best_params['activation'], learning_rate=best_params['learning_rate'],
+                                 rho=best_params['rho'], epsilon=best_params['epsilon'])
+    print(final_model.summary())
+
+    output_training = final_model.fit(x_train_reshaped, y_train, epochs=best_params['epochs'],
+                                      batch_size=best_params['batch_size'], verbose=0)
+
+    # Print the training loss
+    mse_train = output_training.history['loss']
+    print('- mse_train is %.4f' % mse_train[-1] + ' @ ' + str(len(output_training.history['loss'])))
+
+    # Evaluate the model
+    test_pred = final_model.predict(x_test_reshaped)
+    mse_test = mean_squared_error(y_test, test_pred)
+    print('Mean Squared Error test:', mse_test)
+
+    # Plot the test results
+    plt.plot(indices_train, y_train.flatten(), label='Train')
+    plt.plot(indices_test, y_test.flatten(), label='Actual')
+    plt.plot(indices_test, test_pred.flatten(), label='Predicted')
+    plt.xlabel('Time')
+    plt.ylabel('Price_BE')
+    plt.legend()
+    plt.show()
+
+    # Make predictions
+    predictions = final_model.predict(x_forecast_reshaped).flatten()
+
+    return predictions, mse_train, mse_test
+
+
 
 # TODO: check if below model can be used too
         # Build the model

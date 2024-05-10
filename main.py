@@ -4,7 +4,7 @@
 from matplotlib import pyplot as plt
 import pandas as pd
 from datagathering import read_csv_file, remove_outliers
-from forecasting import optimized_model, play_model, play_model_LSTM, play_model
+from forecasting import optimized_model, play_model, play_model_LSTM, play_model, optimized_model_LSTM
 from export import write_forecasted_values
 #from plot import plot_lists, subplot, boxplot, plot_training_validation_loss, plot_training_validation_loss_lr, plot_training_validation_loss_rho
 from scikeras.wrappers import KerasRegressor 
@@ -26,7 +26,7 @@ print(data.head(10))
 #plot_lists(data.index, data['Price_BE'], legend=['Price_BE'], xlabel='Date', ylabel='Price', title='Price_BE')
 #data=remove_outliers(data,'Price_BE')
 
-predictions,mse_train,mse_val,mse_test=play_model_LSTM(data, optimizer='adam')
+predictions,mse_train,mse_val,mse_test=optimized_model_LSTM(data, model='LSTM')
 
   
 #predictions,mse_train,mse_val,mse_test=optimized_model(data,model='Dense')
