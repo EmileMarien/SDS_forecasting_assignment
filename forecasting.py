@@ -351,7 +351,7 @@ def optimized_model_LSTM(data: pd.DataFrame, model: str = 'Dense') -> Tuple[np.n
     # Define the hyperparameters and their values
     hyperparameters = {
         'output_length': [y_train.shape[1]],
-        'input_length': [x_train.shape[1]],
+        'input_length': [x_train_reshaped.shape[1]],
         'epsilon': [1e-6],
         'batch_size': [8],
         'epochs': [16],
