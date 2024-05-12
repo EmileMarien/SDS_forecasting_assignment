@@ -318,11 +318,10 @@ def play_model_LSTM(data: pd.DataFrame, hidden_layers: int = 1, hidden_neurons: 
 
     return predictions, mse_train, mse_val, mse_test
 
-def optimized_model_LSTM(data: pd.DataFrame, model: str = 'Dense') -> Tuple[np.ndarray, List[float], List[float], float]:
+def optimized_model_LSTM(data: pd.DataFrame) -> Tuple[np.ndarray, List[float], float]:
     """
     This function trains a forecasting model on the given data and returns the predictions. It optimizes the hyperparameters.
     :param data: The data to train the model on.
-    :param model: The type of model to use ('Dense' or 'LSTM').
 
     :return: The predictions made by the model.
     :return: The training loss.
@@ -337,21 +336,13 @@ def optimized_model_LSTM(data: pd.DataFrame, model: str = 'Dense') -> Tuple[np.n
     x_test_reshaped = np.expand_dims(x_test, axis=2)
     x_forecast_reshaped = np.expand_dims(x_forecast, axis=2)
 
-    # Define the model
-    if model == 'Dense':
-        selected_model = create_model_dense
-    elif model == 'LSTM':
-        selected_model = create_model_LSTM
-    else:
-        print('The provided model is not valid')
-
     # Get the hyperparameters for the selected model
-    model_params = inspect.signature(selected_model).parameters
+    model_params = inspect.signature(create_model_LSTM).parameters
 
     # Define the hyperparameters and their values
     hyperparameters = {
         'output_length': [y_train.shape[1]],
-        'input_length': [x_train_reshaped.shape[1]],
+        'input_length': [x_train_reshaped.shape[1]],  # Include input_length here
         'epsilon': [1e-6],
         'batch_size': [8],
         'epochs': [16],
@@ -364,7 +355,9 @@ def optimized_model_LSTM(data: pd.DataFrame, model: str = 'Dense') -> Tuple[np.n
         'beta_2': [0.999],
         'momentum': [0.95],
         'nesterov': [True],
+        'optimizer': ['rmsprop'], #'sgd', 'adam'
     }
+
 
     # Iterate over hyperparameters and add them to param_grid only if they are present in model_params
     param_grid = {}
@@ -377,7 +370,7 @@ def optimized_model_LSTM(data: pd.DataFrame, model: str = 'Dense') -> Tuple[np.n
             param_grid[param] = values
 
     # Optimize hyperparameters
-    KerasModel = KerasRegressor(model=selected_model, **param_grid, verbose=2)
+    KerasModel = KerasRegressor(model=create_model_LSTM, **param_grid, verbose=2)
     ea = EarlyStopping(monitor='loss', patience=100)
 
     grid_search = RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=10, cv=2,
@@ -390,10 +383,10 @@ def optimized_model_LSTM(data: pd.DataFrame, model: str = 'Dense') -> Tuple[np.n
     print("Best: %s using %f" % (best_params, best_score))
 
     # Train the final model
-    final_model = selected_model(input_length=best_params['input_length'], output_length=best_params['output_length'],
-                                 hidden_layers=best_params['hidden_layers'], hidden_neurons=best_params['hidden_neurons'],
-                                 activation=best_params['activation'], learning_rate=best_params['learning_rate'],
-                                 rho=best_params['rho'], epsilon=best_params['epsilon'])
+    final_model = create_model_LSTM(hidden_layers=best_params['hidden_layers'], hidden_neurons=best_params['hidden_neurons'],
+                             activation=best_params['activation'], optimizer = best_params['optimizer'], learning_rate=best_params['learning_rate'],
+                             rho=best_params['rho'], epsilon=best_params['epsilon'], beta_1=best_params['beta_1'], beta_2=best_params['beta_2'], 
+                             momentum=best_params['momentum'], nesterov=best_params['nesterov'])
     print(final_model.summary())
 
     output_training = final_model.fit(x_train_reshaped, y_train, epochs=best_params['epochs'],
@@ -404,7 +397,7 @@ def optimized_model_LSTM(data: pd.DataFrame, model: str = 'Dense') -> Tuple[np.n
     print('- mse_train is %.4f' % mse_train[-1] + ' @ ' + str(len(output_training.history['loss'])))
 
     # Evaluate the model
-    test_pred = final_model.predict(x_test_reshaped)
+    test_pred = final_model.predict(x_test_reshaped).reshape(-1, 1)  # Reshape predictions to match y_test shape
     mse_test = mean_squared_error(y_test, test_pred)
     print('Mean Squared Error test:', mse_test)
 
@@ -421,6 +414,7 @@ def optimized_model_LSTM(data: pd.DataFrame, model: str = 'Dense') -> Tuple[np.n
     predictions = final_model.predict(x_forecast_reshaped).flatten()
 
     return predictions, mse_train, mse_test
+
 
 
 
