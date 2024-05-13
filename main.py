@@ -4,7 +4,7 @@
 from matplotlib import pyplot as plt
 import pandas as pd
 from datagathering import read_csv_file, remove_outliers
-from forecasting import optimized_model, play_model, play_model_LSTM, play_model
+from forecasting import optimized_model, play_model, play_model_LSTM, play_model, optimized_model_LSTM
 from export import write_forecasted_values
 from plot import plot_lists, subplot, boxplot, plot_training_validation_loss, plot_training_validation_loss_lr, plot_training_validation_loss_rho
 from scikeras.wrappers import KerasRegressor 
@@ -24,8 +24,10 @@ for d in dates:
 print(data.head(10))
 """
 
-#predictions,mse_train,mse_test=play_model_LSTM(data, optimizer='adam')
+predictions,mse_train,mse_val,mse_test=optimized_model_LSTM(data)
 
+  
+#predictions,mse_train,mse_val,mse_test=optimized_model(data,model='Dense')
 #predictions,mse_train,mse_test=optimized_model(data,model='Dense')
 
 predictions,mse_train,mse_val,mse_test=play_model(data,model='Dense',learning_rate=0.001,rho=0.99,epochs=200,hidden_neurons=24,batch_size=16,hidden_layers=2,epsilon=1e-6)
