@@ -1,7 +1,7 @@
 import datetime
 import matplotlib.pyplot as plt
 import pandas as pd
-from forecasting import optimized_model
+from forecasting import optimized_model, play_model
 import seaborn as sns # type: ignore
 
 def plot_lists(x_values, y_values, legend=None, xlabel=None, ylabel=None, title=None):
@@ -61,7 +61,7 @@ def plot_training_validation_loss_lr(data, learning_rates):
     plt.figure()
 
     for lr in learning_rates:
-        predictions, mse_train, mse_val, mse_test = play_model(data, time_steps=24, neurons=[24,1], activation_functions=['relu', 'linear'], learning_rate=lr, rho=0.9, epochs=48, batch_size=24,epsilon=1e-6)
+        predictions, mse_train, mse_val, mse_test = play_model(data, hidden_layers=1,hidden_neurons=24, activation='relu', learning_rate=lr, rho=0.9, epochs=48, batch_size=24,epsilon=1e-6)
 
         # Plot mse_train
         plt.plot(mse_train[1:], label=f'Training loss (lr={lr})')

@@ -52,30 +52,15 @@ def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, a
         """
         This function trains a forecasting model on the given data and returns the predictions. It allows to play with the hyperparameters.
         """
-        ## Prepare the data
-        #x_train=split_train_val_test(data)[0][0]
-        #y_train=split_train_val_test(data)[0][1]
-
-        #x_val=split_train_val_test(data)[1][0]
-        #y_val=split_train_val_test(data)[1][1]
-
-        #x_test=split_train_val_test(data)[2][0]
-        #y_test=split_train_val_test(data)[2][1]
-
-        #x_forecast=split_train_val_test(data)[3]
         x_train, y_train, x_test, y_test, x_forecast,indices_train,indices_test,indices_forecast = prepare_train_test_forecast(data,test_size=0.05)
         print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape,indices_train.shape,indices_test.shape,indices_forecast.shape)
 
         # Build the model
-
         model = create_model_dense(hidden_layers=hidden_layers, hidden_neurons=hidden_neurons, activation=activation, learning_rate=learning_rate, rho=rho, epsilon=epsilon, input_length=x_train.shape[1], output_length=y_train.shape[1])
-        x_forecast = split_train_val_test(data)[3]
-
-        print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, x_forecast.shape)
 
         # Train the model
-        #output_training=model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_data=(x_val, y_val))
-        output_training=model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_split=0.2)
+        #output_training=model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_data=(x_val, y_val)) # With self chosen validation set
+        output_training=model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1, validation_split=0.2) # With validation split
         # Print the training and validation loss
         mse_train=output_training.history['loss']
         mse_val = output_training.history['val_loss']
@@ -87,15 +72,7 @@ def play_model(data: pd.DataFrame,hidden_layers: int=1, hidden_neurons: int=6, a
         mse_test = mean_squared_error(y_test.flatten(), test_pred)
         print('Mean Squared Error test:', mse_test) #Alternative way to evaluate the model
 
-        # Plot the test results
-        #plt.plot(x_train.index, y_train, label='Train')
-        #plt.plot(x_val.index, y_val, label='Validate')
-        #plt.plot(x_test.index, y_test, label='Actual')
-        #plt.plot(x_test.index, test_pred.flatten(), label='Predicted')
-        #plt.xlabel('Time')
-        #plt.ylabel('Price_BE')
-        #plt.legend()
-        #plt.show()
+
         plt.plot(indices_train, y_train.flatten(), label='Train')
         plt.plot(indices_test, y_test.flatten(), label='Actual')
         plt.plot(indices_test, test_pred.flatten(), label='Predicted')
@@ -147,8 +124,8 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
         'epsilon': [1e-6],#1e-7,1e-8,1e-5],  #, 1e-7, 1e-8
         'batch_size': [8],#16,32,48],  #, 32, 64
         'epochs': [200],#300,400], #, 48, 72
-        'hidden_layers': [1],#2,3,4,5,6],  # , 2, 3
-        'hidden_neurons': [24],#48,62,78,94,32],  #sp_randint(3, 12) 6, 12, 24
+        'hidden_layers': [2,3,4,5],#2,3,4,5,6],  # , 2, 3
+        'hidden_neurons': [24,48,64,128],#48,62,78,94,32],  #sp_randint(3, 12) 6, 12, 24
         'activation': ['relu'],   #, 'tanh', 'sigmoid'
         'learning_rate': [0.001],  #, 0.01, 0.1
         'rho': [0.9],  #, 0.99, 0.999
@@ -180,9 +157,9 @@ def optimized_model(data: pd.DataFrame,model:str='Dense') -> Tuple[np.ndarray, L
 
         #grid_search = GridSearchCV(estimator=KerasModel, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error',verbose=2,n_jobs=-1) # cv: the number of cross-validation folds (means the data is split into 2 parts, 1 for training and 1 for testing)
 
-        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=10, cv=2, scoring='neg_mean_squared_error',verbose=2,n_jobs=1) 
+        grid_search= RandomizedSearchCV(estimator=KerasModel, param_distributions=param_grid, n_iter=100, cv=2, scoring='neg_mean_squared_error',verbose=2,n_jobs=1) 
         print('test')
-        grid_search.fit(x_train, y_train,verbose=1)
+        grid_search.fit(x_train, y_train,verbose=0)
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
         #plot_gridsearch_results(grid_search.cv_results_)

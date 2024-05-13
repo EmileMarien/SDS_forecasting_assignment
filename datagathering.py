@@ -78,7 +78,7 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.05)->Tuple[
 
     ## New
     data.resample('h').mean()
-    n_hours=24
+    n_hours=24*3
 
     # Reduce data so it is a multiple of n_hours
     data = data.iloc[(len(data) % n_hours):]
@@ -93,7 +93,7 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.05)->Tuple[
     shifts = {
         'Price_BE': {
             'Price_BE1': n_hours*1,
-            'Price_BE2': n_hours*2,
+            #'Price_BE2': n_hours*2,
             #'Price_BE3': n_hours*3,
             #'Price_BE4': n_hours*4,
             #'Price_BE5': n_hours*5,
@@ -132,7 +132,7 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.05)->Tuple[
         'Price_CH': {            
             'Price_CH0': n_hours*0,
             'Price_CH1': n_hours*1,
-            'Price_CH2': n_hours*2,
+            #'Price_CH2': n_hours*2,
             #'Price_CH3': n_hours*3,
             #'Price_CH4': n_hours*4,
             #'Price_CH5': n_hours*5,
@@ -200,19 +200,20 @@ def prepare_train_test_forecast(data:pd.DataFrame, test_size:float=0.05)->Tuple[
     #print(X_forecast.shape)
     #print(X.shape,Y.shape)
 
-    print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, X_forecast.shape, indices_train.shape, indices_test.shape, indices_forecast.shape)
+    #print(x_train.shape, y_train.shape, x_test.shape, y_test.shape, X_forecast.shape, indices_train.shape, indices_test.shape, indices_forecast.shape)
 
     return x_train, y_train, x_test, y_test, X_forecast, indices_train, indices_test, indices_forecast
 
 
+###### THRASHCAN
 
-data = read_csv_file('Dataset For Forecasting Assignment.csv')
+#data = read_csv_file('Dataset For Forecasting Assignment.csv')
 
 
-start_date = data.index[0]
-end_date = data.index[-1]
-dates = pd.date_range(start=start_date, end=end_date, freq='1h')
-prepare_train_test_forecast(data, test_size=0.33)
+#start_date = data.index[0]
+#end_date = data.index[-1]
+#dates = pd.date_range(start=start_date, end=end_date, freq='1h')
+#prepare_train_test_forecast(data, test_size=0.33)
 
 
 
